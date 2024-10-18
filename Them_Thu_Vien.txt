@@ -1,0 +1,9 @@
+Django
+pip install django django-rest-framework django-cors-headers django-rest-framework-simplejwt
+pip install django-jazzmin
+pip install pymysql
+
+React
+npx create-react-app frontend
+Npm install axios dayjs jwt-decode react-router-dom@5.2.0
+npm install sweetalert2
