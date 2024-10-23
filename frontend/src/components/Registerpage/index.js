@@ -261,7 +261,7 @@ function Registerpage(){
                   <input
                     type="password"
                     className="form-control"
-                    placeholder="Password"
+                    placeholder="Confirm Password"
                     aria-label="Password"
                     name='password2'
                     onChange={e => setPassword2(e.target.value)}

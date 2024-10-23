@@ -8,16 +8,22 @@ import Loginpage from './components/Login/index'
 import Profilepage from './components/Profilepage/index'
 import Registerpage from './components/Registerpage/index'
 
+import AuthenticationPage from './components/AuthenticationPage/index'
+import Messagepage from './components/Messagepage'
+
 function App() {
   return(
     <Router>
       <AuthProvider>
         {/* <Navbar/> */}
         <Switch>
-          <PrivateRoute component={Profilepage} path="/profile" exact />
-          <Route component={Loginpage} path="/login" />
-          <Route component={Registerpage} path="/register" exact />
-          <PrivateRoute component={Profilepage} path="/" />
+          <PrivateRoute component={Messagepage} path="/" exact/>
+          <Route component={AuthenticationPage} path="/authentication"/>
+          
+          {/* <PrivateRoute component={Profilepage} path="/profile" exact /> */}
+          {/* <Route component={Loginpage} path="/login" /> */}
+          {/* <Route component={Registerpage} path="/register" exact /> */}
+          {/* <PrivateRoute component={Profilepage} path="/" /> */}
         </Switch>
       </AuthProvider>
     </Router>

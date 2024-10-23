@@ -17,11 +17,13 @@ function Profilepage() {
     className="position-absolute w-100 min-height-300 top-0"
     style={{
       backgroundImage:
-        'url("https://raw.githubusercontent.com/creativetimofficial/public-assets/master/argon-dashboard-pro/assets/img/profile-layout-header.jpg")',
-      backgroundPositionY: "50%"
+        'url("https://media.istockphoto.com/id/1385509455/vector/business-communication-concept.jpg?s=612x612&w=0&k=20&c=BqAT-opyxl84x3IKO4JMi6E8YB8AJIPU_7q49c8FojY=")',
+      backgroundPosition: "center center",
+      backgroundSize: "770px",
+      backgroundRepeat: "no-repeat"
     }}
   >
-    <span className="mask bg-primary opacity-6" />
+    <span className="mask opacity-4" style={{backgroundColor: "black"}}/>
   </div>
   <aside
     className="sidenav bg-white navbar navbar-vertical navbar-expand-xs border-0 border-radius-xl my-3 fixed-start ms-4 "
@@ -171,7 +173,7 @@ function Profilepage() {
           <ol className="breadcrumb bg-transparent mb-0 pb-0 pt-1 ps-2 me-sm-6 me-5">
             <li className="breadcrumb-item text-sm">
               <a className="text-white opacity-5" href="javascript:;">
-                Pages
+                Account Pages
               </a>
             </li>
             <li
@@ -181,14 +183,14 @@ function Profilepage() {
               Profile
             </li>
           </ol>
-          <h6 className="text-white font-weight-bolder ms-2">Profile</h6>
+          <h3 className="text-white font-weight-bolder ms-2">Profile</h3>
         </nav>
         <div
           className="collapse navbar-collapse me-md-0 me-sm-4 mt-sm-0 mt-2"
           id="navbar"
         >
           <div className="ms-md-auto pe-md-3 d-flex align-items-center">
-            <div className="input-group">
+            {/* <div className="input-group">
               <span className="input-group-text text-body">
                 <i className="fas fa-search" aria-hidden="true" />
               </span>
@@ -197,19 +199,19 @@ function Profilepage() {
                 className="form-control"
                 placeholder="Type here..."
               />
-            </div>
+            </div> */}
           </div>
           <ul className="navbar-nav justify-content-end">
-            <li className="nav-item d-flex align-items-center">
+            <li className="nav-item d-flex align-items-center" > 
               <a
                 className="nav-link text-white font-weight-bold px-0"
                 onClick={logoutUser} style={{cursor:"pointer"}}
               >
-                <i className="fa fa-user me-sm-1" />
-                <span className="d-sm-inline d-none">Sign Out</span>
+                <i className="fa fa-user me-sm-1" style={{fontSize: 20}}/>
+                <span className="d-sm-inline d-none" style={{fontSize: 20}}>Sign Out</span>
               </a>
             </li>
-            <li className="nav-item d-xl-none ps-3 pe-0 d-flex align-items-center">
+            {/* <li className="nav-item d-xl-none ps-3 pe-0 d-flex align-items-center">
               <a href="javascript:;" className="nav-link text-white p-0"></a>
               <a
                 href="javascript:;"
@@ -222,19 +224,20 @@ function Profilepage() {
                   <i className="sidenav-toggler-line bg-white" />
                 </div>
               </a>
-            </li>
-            <li className="nav-item px-3 d-flex align-items-center">
+            </li> */}
+            {/* <li className="nav-item px-3 d-flex align-items-center">
               <a href="javascript:;" className="nav-link text-white p-0">
                 <i className="fa fa-cog fixed-plugin-button-nav cursor-pointer" />
               </a>
-            </li>
-            <li className="nav-item dropdown pe-2 d-flex align-items-center">
+            </li> */}
+            <li className="nav-item dropdown pe-2 d-flex align-items-center" style={{margin: "18px"}}>
               <a
                 href="javascript:;"
                 className="nav-link text-white p-0"
                 id="dropdownMenuButton"
                 data-bs-toggle="dropdown"
                 aria-expanded="false"
+                style={{fontSize: 20}}
               >
                 <i className="fa fa-bell cursor-pointer" />
               </a>
@@ -373,7 +376,7 @@ function Profilepage() {
           </div>
           <div className="col-lg-4 col-md-6 my-sm-auto ms-sm-auto me-sm-0 mx-auto mt-3">
             <div className="nav-wrapper position-relative end-0">
-              <ul className="nav nav-pills nav-fill p-1" role="tablist">
+              {/* <ul className="nav nav-pills nav-fill p-1" role="tablist">
                 <li className="nav-item">
                   <a
                     className="nav-link mb-0 px-0 py-1 active d-flex align-items-center justify-content-center "
@@ -410,7 +413,7 @@ function Profilepage() {
                     <span className="ms-2">Settings</span>
                   </a>
                 </li>
-              </ul>
+              </ul> */}
             </div>
           </div>
         </div>
@@ -423,7 +426,7 @@ function Profilepage() {
             <div className="card-header pb-0">
               <div className="d-flex align-items-center">
                 <p className="mb-0">Edit Profile</p>
-                <button className="btn btn-primary btn-sm ms-auto">
+                <button className="btn btn-primary btn-sm ms-auto" style={{backgroundColor: "#0A0A0C"}}>
                   Settings
                 </button>
               </div>
@@ -665,7 +668,7 @@ function Profilepage() {
           </div>
         </div>
       </div>
-      <footer className="footer pt-3  ">
+      {/* <footer className="footer pt-3  ">
         <div className="container-fluid">
           <div className="row align-items-center justify-content-lg-between">
             <div className="col-lg-6 mb-lg-0 mb-4">
@@ -723,7 +726,7 @@ function Profilepage() {
             </div>
           </div>
         </div>
-      </footer>
+      </footer> */}
     </div>
   </div>
   <div className="fixed-plugin">
