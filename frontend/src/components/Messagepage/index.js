@@ -13,7 +13,7 @@ function Messagepage(){
   }
     return(
         <>
-        <h1>Đây là trang Message</h1>
+        <h1>Đây là trang Message của tôi</h1>
         <div>
             <a className="nav-link " onClick={logoutUser} style={{cursor:"pointer"}}>
             <div className="icon icon-shape icon-sm border-radius-md text-center me-2 d-flex align-items-center justify-content-center">

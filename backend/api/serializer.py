@@ -3,7 +3,9 @@ from api.models import User, Profile
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth.password_validation import validate_password
+# Chuyển đổi dữ liệu từ model Django (Python objects) sang JSON/XML và ngược lại
 
+# Chuyển User model thành JSON
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -13,14 +15,10 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
-        
         token['fullname'] = user.profile.fullname
         token['username'] = user.username
         token['email'] = user.email
-        token['bio'] = user.profile.bio
         token['image'] = str(user.profile.image)
-        token['verified'] = user.profile.verified
-        
         return token
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -35,18 +33,14 @@ class RegisterSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         if attrs['password'] != attrs['password2']:
             raise serializers.ValidationError(
-                {"password": "Password fields didn't match."})
-
+                {"password": "The passwords you entered do not match."})
         return attrs
 
     def create(self, validated_data):
         user = User.objects.create(
             username=validated_data['username'],
             email=validated_data['email']
-
         )
-
         user.set_password(validated_data['password'])
         user.save()
-
         return user

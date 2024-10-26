@@ -3,7 +3,7 @@ from django.contrib.auth.models import AbstractUser
 from django.db.models.signals import post_save
 
 class User(AbstractUser):
-    username = models.CharField(max_length=100)
+    username = models.CharField(max_length=100, unique=True)
     email = models.EmailField(unique=True)
     
     USERNAME_FIELD = 'email'

@@ -78,6 +78,21 @@ useEffect(() => {
       iconEye.removeEventListener('click', handle);
   }
 }, []); 
+
+useEffect(() => {
+  const input = document.getElementById('passwordCheck');
+  const iconEye = document.getElementById('loginPasswordCheckCreate');
+
+  const handle = () => {
+      input.type = input.type === 'password' ? 'text' : 'password';
+      iconEye.classList.toggle('ri-eye-fill');
+      iconEye.classList.toggle('ri-eye-off-fill');
+  }
+  iconEye.addEventListener('click', handle);
+  return () => {
+      iconEye.removeEventListener('click', handle);
+  }
+}, []); 
     
     return (
         <>
@@ -279,7 +294,7 @@ useEffect(() => {
               </label>
               <i
                 className="ri-eye-off-fill login__icon login__password"
-                id="loginPasswordCreate"
+                id="loginPasswordCheckCreate"
               />
             </div>
           </div>

@@ -81,7 +81,7 @@ export const AuthProvider = ({ children }) => {
             })
         })
         if(response.status === 201){
-            history.push("/authentication")
+            history.push("/")
             swal.fire({
                 title: "Registration Successful, Login Now",
                 icon: "success",
@@ -91,14 +91,17 @@ export const AuthProvider = ({ children }) => {
                 timerProgressBar: true,
                 showConfirmButton: false,
             })
-        } else {
+        } else{
             console.log(response.status);
             console.log("there was a server issue");
+            var text = "";
+            if(password !== password2) text = "The passwords you entered do not match.";
+            else text = "The username or email you entered is already in use. Please try a different one.";
             swal.fire({
-                title: "An Error Occured " + response.status,
+                title: "" + text,
                 icon: "error",
                 toast: true,
-                timer: 6000,
+                timer: 10000,
                 position: 'top-right',
                 timerProgressBar: true,
                 showConfirmButton: false,
@@ -112,7 +115,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem("authTokens")
         history.push("/authentication")
         swal.fire({
-            title: "YOu have been logged out...",
+            title: "You have been logged out...",
             icon: "success",
             toast: true,
             timer: 6000,
