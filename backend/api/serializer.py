@@ -1,8 +1,9 @@
 from rest_framework_simplejwt.tokens import Token
-from api.models import User, Profile
+from api.models import User, Profile, ChatMessage
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 # Chuyển đổi dữ liệu từ model Django (Python objects) sang JSON/XML và ngược lại
 
 # Chuyển User model thành JSON
@@ -10,6 +11,11 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'email']
+        
+class ProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Profile
+        fields = ['id', 'user', 'fullname','image']
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
@@ -18,6 +24,7 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         token['fullname'] = user.profile.fullname
         token['username'] = user.username
         token['email'] = user.email
+        token['bio'] = user.profile.bio
         token['image'] = str(user.profile.image)
         return token
 
@@ -34,6 +41,13 @@ class RegisterSerializer(serializers.ModelSerializer):
         if attrs['password'] != attrs['password2']:
             raise serializers.ValidationError(
                 {"password": "The passwords you entered do not match."})
+        
+        # Kiểm tra các tiêu chí của validate_password
+        try:
+            validate_password(attrs['password'])
+        except ValidationError as e:
+            raise serializers.ValidationError({"password": e.messages})
+        
         return attrs
 
     def create(self, validated_data):
@@ -44,3 +58,12 @@ class RegisterSerializer(serializers.ModelSerializer):
         user.set_password(validated_data['password'])
         user.save()
         return user
+    
+class ChatMessageSerializer(serializers.ModelSerializer):
+    sender_profile = ProfileSerializer(read_only=True)
+    receiver_profile = ProfileSerializer(read_only=True)
+    
+    class Meta:
+        model = ChatMessage
+        fields = ['id', 'user', 'sender', 'sender_profile', 'receiver', 'receiver_profile', 'content', 'timestamp', 'is_read']
+        

@@ -10,6 +10,7 @@ import Registerpage from './components/Registerpage/index'
 
 import AuthenticationPage from './components/AuthenticationPage/index'
 import Messagepage from './components/Messagepage'
+import MessageDetailpage from './components/MessageDetail'
 
 function App() {
   return(
@@ -17,8 +18,10 @@ function App() {
       <AuthProvider>
         {/* <Navbar/> */}
         <Switch>
-          <PrivateRoute component={Messagepage} path="/" exact/>
           <Route component={AuthenticationPage} path="/authentication"/>
+          <PrivateRoute component={Messagepage} path="/" exact/>
+          <PrivateRoute component={MessageDetailpage} path="/:id" exact/>
+          
           
           {/* <PrivateRoute component={Profilepage} path="/profile" exact /> */}
           {/* <Route component={Loginpage} path="/login" /> */}

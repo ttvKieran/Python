@@ -71,43 +71,72 @@ export const AuthProvider = ({ children }) => {
     }
 
     const registerUser = async (email, username, password, password2) => {
-        const response = await fetch("http://127.0.0.1:8000/api/register/", {
-            method: "POST",
-            headers: {
-                "Content-Type":"application/json"
-            },
-            body: JSON.stringify({
-                email, username, password, password2
-            })
-        })
-        if(response.status === 201){
-            history.push("/")
+        try {
+            const response = await fetch("http://127.0.0.1:8000/api/register/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    email, username, password, password2
+                })
+            });
+    
+            // Nếu đăng ký thành công
+            if (response.status === 201) {
+                history.push("/");
+                swal.fire({
+                    title: "Registration Successful, Login Now",
+                    icon: "success",
+                    toast: true,
+                    timer: 6000,
+                    position: 'top-right',
+                    timerProgressBar: true,
+                    showConfirmButton: false,
+                });
+            } else {
+                // Lấy thông tin lỗi từ response
+                const errorData = await response.json();
+                console.log("Error Data:", errorData);
+    
+                let errorMessage = "Đã xảy ra lỗi trên server.";
+                if (errorData.password) {
+                    // Nếu có lỗi về password
+                    errorMessage = errorData.password.join("\n");
+                } else if (errorData.username) {
+                    // Nếu có lỗi về username
+                    errorMessage = errorData.username.join("\n");
+                } else if (errorData.email) {
+                    // Nếu có lỗi về email
+                    errorMessage = errorData.email.join("\n");
+                } else {
+                    // Nếu các lỗi khác
+                    errorMessage = "Username or email has already been used. Please try again with a different one.";
+                }
+    
+                swal.fire({
+                    title: errorMessage,
+                    icon: "error",
+                    toast: true,
+                    timer: 10000,
+                    position: 'top-right',
+                    timerProgressBar: true,
+                    showConfirmButton: false,
+                });
+            }
+        } catch (error) {
+            console.error("Network Error:", error);
             swal.fire({
-                title: "Registration Successful, Login Now",
-                icon: "success",
-                toast: true,
-                timer: 6000,
-                position: 'top-right',
-                timerProgressBar: true,
-                showConfirmButton: false,
-            })
-        } else{
-            console.log(response.status);
-            console.log("there was a server issue");
-            var text = "";
-            if(password !== password2) text = "The passwords you entered do not match.";
-            else text = "The username or email you entered is already in use. Please try a different one.";
-            swal.fire({
-                title: "" + text,
+                title: "Network Error: Không thể kết nối tới server.",
                 icon: "error",
                 toast: true,
                 timer: 10000,
                 position: 'top-right',
                 timerProgressBar: true,
                 showConfirmButton: false,
-            })
+            });
         }
-    }
+    };
 
     const logoutUser = () => {
         setAuthTokens(null)

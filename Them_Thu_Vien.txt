@@ -1,7 +1,7 @@
 Django
 pip install django django-rest-framework django-cors-headers django-rest-framework-simplejwt
 pip install django-jazzmin
-pip install pymysql
+pip install channels channels-redis
 
 React
 npx create-react-app frontend
