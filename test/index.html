@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat Room</title>
+    <style>
+        .chat-container {
+            height: 500px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .message-image {
+            max-width: 200px;
+            max-height: 200px;
+            margin: 5px 0;
+        }
+        
+        #image-preview {
+            display: none;
+            max-width: 200px;
+            max-height: 200px;
+            margin: 10px 0;
+        }
+        
+        .message {
+            margin-bottom: 10px;
+            padding: 5px;
+            border-bottom: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+    <div id="chat-container" class="chat-container"></div>
+    
+    <div class="input-container">
+        <input type="text" id="message-input" placeholder="Type your message...">
+        <input type="file" id="image-input" accept="image/*" onchange="handleImageUpload(event)">
+        <img id="image-preview">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="chat.js"></script>
+</body>
+</html>

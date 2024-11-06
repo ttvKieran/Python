@@ -6,7 +6,6 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 # Chuyển đổi dữ liệu từ model Django (Python objects) sang JSON/XML và ngược lại
 
-# Chuyển User model thành JSON
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User

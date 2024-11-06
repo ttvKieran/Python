@@ -9,6 +9,18 @@ class User(AbstractUser):
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
     
+    friend_requests_sent = models.ManyToManyField(
+        'self', 
+        symmetrical=False, 
+        related_name='friend_requests_received'
+    )
+    friends = models.ManyToManyField(
+        'self', 
+        symmetrical=True, 
+        related_name='friends_with'
+    )
+    status_online = models.CharField(max_length=50, default="offline")
+    
     def __str__(self):
         return self.username
     
@@ -41,9 +53,11 @@ class ChatMessage(models.Model):
     sender = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="sender")
     receiver = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="receiver")
     
+    image = models.ImageField(default="", upload_to="chat_images", null=True, blank=True)
     content = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
+    is_deleted = models.BooleanField(default=False)
 
     # Chứa những dữ liệu mô tả cho model
     class Meta:

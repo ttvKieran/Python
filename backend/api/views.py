@@ -2,6 +2,7 @@ from django.shortcuts import render
 from django.http import JsonResponse
 from django.db.models import OuterRef, Subquery
 from django.db.models import Q
+from django.conf import settings
 
 from api.models import User, Profile, ChatMessage
 from api.serializer import UserSerializer, MyTokenObtainPairSerializer, RegisterSerializer, ChatMessageSerializer, ProfileSerializer
@@ -11,6 +12,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework import viewsets
 
 class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
@@ -21,7 +23,6 @@ class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
 
 # Get All Routes
-
 @api_view(['GET'])
 def getRoutes(request):
     routes = [
@@ -131,3 +132,9 @@ class SearchUser(generics.ListAPIView):
 
         serializer = self.get_serializer(users, many=True)
         return Response(serializer.data)
+    
+class ChatMessageViewSet(viewsets.ModelViewSet):
+    queryset = ChatMessage.objects.all()
+    serializer_class = ChatMessageSerializer
+
+    

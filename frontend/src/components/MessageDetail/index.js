@@ -17,10 +17,11 @@ export default function MessageDetail() {
 
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState([]);
-  const [newMessage, setNewMessage] = useState({content: ""});
+  const [newMessage, setNewMessage] = useState({ content: "" });
   const [user, setUser] = useState([]);
   const [profile, setProfile] = useState([])
-  
+  const [useProfile, setUserProfile] = useState([])
+
   const axios = useAxios();
   const receiver = useParams();
 
@@ -84,8 +85,8 @@ export default function MessageDetail() {
 
   const sendMessage = (event) => {
     event.preventDefault();
-    
-    if(!newMessage.content.trim()) return;
+
+    if (!newMessage.content.trim()) return;
 
     // Save to database
     const formData = new FormData();
@@ -98,8 +99,8 @@ export default function MessageDetail() {
     try {
       axios.post(baseURL + '/send-message/', formData);
       document.getElementById("text-input-send-message").value = "";
-      setNewMessage({content: ''});
-      
+      setNewMessage({ content: '' });
+
     } catch (error) {
       console.log(error);
     }
@@ -110,26 +111,42 @@ export default function MessageDetail() {
 
   useEffect(() => {
     const fetchProfile = async () => {
-          try {
-            let profile_id = receiver.id - 33
-            console.log(profile_id)
-            await axios.get(baseURL + '/profile/' + profile_id + '/').then((res) => {
-              setProfile(res.data)
-              setUser(res.data.user)
-            })
-              
-          }catch (error) {
-              console.log(error);
-          }}
-        fetchProfile()
+      try {
+        let profile_id = receiver.id - 33
+        console.log(profile_id)
+        await axios.get(baseURL + '/profile/' + profile_id + '/').then((res) => {
+          setProfile(res.data)
+          setUser(res.data.user)
+        })
+
+      } catch (error) {
+        console.log(error);
+      }
+    }
+    fetchProfile()
   }, [receiver.id])
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        let profile_id = user_id - 33
+        await axios.get(baseURL + '/profile/' + profile_id + '/').then((res) => {
+          setUserProfile(res.data)
+        })
+
+      } catch (error) {
+        console.log(error);
+      }
+    }
+    fetchProfile()
+  }, [])
 
   console.log(profile)
 
   function scrollToBottom() {
     const chatContainer = document.getElementById('chat-messages');
     const lastMessage = chatContainer.lastElementChild; // Phần tử cuối cùng trong khung chat
-  
+
     if (lastMessage) {
       lastMessage.scrollIntoView({ behavior: 'smooth' });
     }
@@ -139,16 +156,60 @@ export default function MessageDetail() {
     <>
       <main className="content">
         {/* <div className="content p-0" > */}
-          <div className="card">
+        <div className="card">
           <div className="row">
             <div className="col-12 col-lg-5 col-xl-3 border-right">
               <div className="px-4 d-none d-md-block">
+                <Link to={'/profile/' + user_id} className="d-flex align-items-center py-1" style={{marginTop: "10px"}}>
+                  <div className="position-relative">
+                    <img
+                      src={useProfile.image == null ? "/default.png" : useProfile.image}
+                      className="profile-image"
+                      alt="Sharon Lessman"
+                      width={60}
+                      height={60}
+                    />
+                  </div>
+                  <div className="flex-grow-1 pl-3" style={{color: "black"}}>
+                    <strong>{useProfile.fullname}</strong>
+                  </div>
+                  {/* <div>
+                    <button className="btn btn-light border btn-lg px-3">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width={24}
+                        height={24}
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="feather feather-more-horizontal feather-lg"
+                      >
+                        <circle cx={12} cy={12} r={1} />
+                        <circle cx={19} cy={12} r={1} />
+                        <circle cx={5} cy={12} r={1} />
+                      </svg>
+                    </button>
+                  </div> */}
+                </Link>
                 <div className="d-flex align-items-center">
-                  <div className="flex-grow-1">
+                  {/* <div className="flex-grow-1">
                     <input
                       type="text"
                       className="form-control my-3"
                       placeholder="Search..."
+                    />
+                  </div> */}
+                  <div className="search-container flex-grow-1">
+                    <span className="search-icon">
+                      <i class="fa-solid fa-magnifying-glass"></i>
+                    </span>
+                    <input
+                      type="text"
+                      placeholder="Tìm kiếm trên Messenger"
+                      className="search-input"
                     />
                   </div>
                 </div>
@@ -158,10 +219,10 @@ export default function MessageDetail() {
                   <small><div className="badge bg-success float-right text-white">{moment.utc(message.timestamp).local().startOf('seconds').fromNow()}</div></small>
                   <div className="d-flex align-items-start">
                     {message.sender !== user_id &&
-                      <img src={message.sender_profile.image} className="profile-image" alt="1" width={60} height={60} key={index}/>
+                      <img src={message.sender_profile.image} className="profile-image" alt="1" width={60} height={60} key={index} />
                     }
                     {message.sender === user_id &&
-                      <img src={message.receiver_profile.image} className="profile-image" alt="2" width={60} height={60} key={index}/>
+                      <img src={message.receiver_profile.image} className="profile-image" alt="2" width={60} height={60} key={index} />
                     }
                     <div className="flex-grow-1 ml-3" style={{ fontWeight: "bold" }}>
                       {message.sender !== user_id &&
@@ -179,8 +240,8 @@ export default function MessageDetail() {
               )}
               <hr className="d-block d-lg-none mt-1 mb-0" />
             </div>
-            <div className="col-12 col-lg-7 col-xl-9" style={{borderBottom: "0"}}>
-              <div className="py-2 px-4 border-bottom d-none d-lg-block" style={{height: "12vh"}}>
+            <div className="col-12 col-lg-7 col-xl-9" style={{ borderBottom: "0" }}>
+              <div className="py-2 px-4 border-bottom d-none d-lg-block" style={{ height: "12vh" }}>
                 <div className="d-flex align-items-center py-1">
                   <div className="position-relative">
                     <img
@@ -233,7 +294,10 @@ export default function MessageDetail() {
                           </div>
                           <div className="flex-shrink-1 bg-light rounded py-2 px-3 mr-3">
                             <div className="font-weight-bold mb-1">{m.sender_profile.fullname}</div>
-                            {m.content}
+                            {/* {m.content} */}
+                            <div class="message-container">
+                              <p class="message-text">{m.content}</p>
+                            </div>
                             <br />
                           </div>
                         </div>
@@ -256,8 +320,8 @@ export default function MessageDetail() {
                   )}
                 </div>
               </div>
-              <div className="flex-grow-0 py-3 px-4 border-top" style={{height: "10vh", borderBottom: "0"}}>
-                <div className="input-group">
+              <div className="flex-grow-0 py-3 px-4 border-top" style={{ height: "10vh", borderBottom: "0" }}>
+                {/* <div className="input-group">
                   <input
                     type="text"
                     className="form-control"
@@ -267,12 +331,21 @@ export default function MessageDetail() {
                     id="text-input-send-message"
                     value={newMessage.content}
                   />
-                  <button className="btn btn-primary" id='button-send-message' onClick={sendMessage}>Send</button>
+                  <button className="btn btn-4 btn-sep icon-send" id='button-send-message' onClick={sendMessage}>Send</button>
+                </div> */}
+                <div className="message-input-container">
+                  <input type="text" placeholder="Aa" className="message-input" name='content'
+                    onChange={handleChangeMessage}
+                    id="text-input-send-message"
+                    value={newMessage.content} />
+                  <button className="emoji-button" id='button-send-message' onClick={sendMessage}>
+                    <i class="fa-solid fa-face-smile"></i>
+                  </button>
                 </div>
               </div>
             </div>
           </div>
-          </div>
+        </div>
         {/* </div> */}
       </main>
       {/* <div>

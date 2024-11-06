@@ -1,0 +1,155 @@
+.card{
+  height: 100%;
+}
+
+.chat-online {
+  color: #34ce57
+}
+
+.chat-offline {
+  color: #e4606d
+}
+
+.chat-messages {
+  display: flex;
+  flex-direction: column;
+  height: 70vh;
+  overflow-y: scroll;
+}
+
+.chat-message-left,
+.chat-message-right {
+  display: flex;
+  flex-shrink: 0
+}
+
+.chat-message-left {
+  margin-right: auto
+}
+
+.chat-message-right {
+  flex-direction: row-reverse;
+  margin-left: auto
+}
+.py-3 {
+  padding-top: 1rem!important;
+  padding-bottom: 1rem!important;
+}
+.px-4 {
+  padding-right: 1.5rem!important;
+  padding-left: 1.5rem!important;
+}
+.flex-grow-0 {
+  flex-grow: 0!important;
+}
+.border-top {
+  border-top: 1px solid #dee2e6!important;
+}
+/* CSS */
+.profile-image {
+  width: 60px;             /* Đặt chiều rộng ảnh */
+  height: 60px;            /* Đặt chiều cao ảnh, phải bằng width để tạo hình tròn */
+  border-radius: 50%;       /* Làm cho các góc của ảnh thành hình tròn */
+  object-fit: cover;        /* Đảm bảo ảnh hiển thị vừa vặn trong khung tròn */
+  border: 2px solid #ccc;   /* Đặt viền nếu muốn */
+}
+.search-container {
+  display: flex;
+  align-items: center;
+  background-color: #f0f2f5; /* Màu nền giống như trong hình */
+  border-radius: 20px; /* Bo góc */
+  padding: 7px;
+  width: 350px; /* Chiều rộng khung tìm kiếm */
+  margin-top: 20px;
+  margin-bottom: 10px;
+}
+
+.search-icon {
+  margin-right: 8px; /* Khoảng cách giữa icon và text */
+  margin-left: 8px;
+  color: #85888C; /* Màu của icon */
+  font-size: 20px;
+}
+
+.search-input {
+  border: none;
+  outline: none;
+  background-color: transparent;
+  width: 100%;
+  font-size: 14px;
+  color: #8a8d91; /* Màu chữ */
+}
+
+.search-input::placeholder {
+  color: #8a8d91; /* Màu của placeholder */
+}
+
+.message-input-container {
+  display: flex;
+  align-items: center;
+  background-color: #f0f2f5;
+  border-radius: 20px;
+  padding: 5px 10px;
+  width: 95%;
+  margin-bottom: 10px;
+
+  /* max-width: 600px; */
+}
+
+.message-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background-color: transparent;
+  font-size: 16px;
+  padding: 7px;
+  color: #050505;
+}
+
+.message-input::placeholder {
+  color: #65676b;
+}
+
+.emoji-button {
+  background-color: #4CAF50;
+  border: none;
+  border-radius: 50%;
+  color: white;
+  font-size: 20px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-left: 10px;
+}
+
+.emoji-button:hover {
+  background-color: #45a049;
+}
+
+
+.message-container {
+  max-width: 400px; /* chiều rộng tối đa của tin nhắn */
+  /* padding: 10px; */
+  /* background-color: #f0f2f5; */
+  /* border-radius: 10px; */
+}
+
+.message-text {
+  margin: 0;
+  word-wrap: break-word; /* Tự động ngắt từ khi quá dài */
+  word-break: break-word; /* Tự động xuống dòng khi từ quá dài */
+  white-space: pre-wrap;  /* Giữ nguyên khoảng trắng và ngắt dòng khi quá dài */
+}
+
+.tooltip {
+  visibility: hidden;
+}
+
+.tooltip.shown{
+  visibility: visible;
+  opacity: 1;
+}
+

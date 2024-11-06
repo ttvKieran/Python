@@ -7,12 +7,13 @@ import moment from 'moment'
 import './style.css'
 
 function Messagepage() {
-  const { user, logoutUser } = useContext(AuthContext)
+  const { user, logoutUser, getAuthTokens } = useContext(AuthContext)
   // Get and Decode Token
-  const token = localStorage.getItem("authTokens")
+  const token = localStorage.getItem("authTokens");
   const decoded = jwt_decode(token)
   const user_id = decoded.user_id
   const baseURL = 'http://127.0.0.1:8000/api'
+  // console.log(user)
   // Create New State
   const [messages, setMessages] = useState([])
   let [newSearch, setnewSearch] = useState({ search: "", });
@@ -37,12 +38,19 @@ function Messagepage() {
   }, [])
 
   return (
-    <>
+    <> 
       <main className="content">
+          <Link className="btn btn-primary m1" to="/user-list/">Danh sách người dùng</Link>
+          <Link className="btn btn-primary m1" to="/friend-list/">Danh sách bạn bè</Link>
+          <Link className="btn btn-primary m1" to="/friend-request">
+            Lời mời kết bạn
+            <span class="badge badge-light">0</span>
+          </Link>
         <div className="content p-0">
           {/* <div className="card"> */}
           <div className="row g-0">
             <div className="col-12 col-lg-5 col-xl-3 border-right">
+              
               <div className="px-4 d-none d-md-block">
                 <div className="d-flex align-items-center">
                   <div className="flex-grow-1">
@@ -55,7 +63,7 @@ function Messagepage() {
                 </div>
               </div>
               {messages.map((message) =>
-                <Link to={'/'+(message.sender === user_id ? message.receiver : message.sender) + '/'} className="list-group-item list-group-item-action border-0">
+                <Link to={'/socketIO/'+(message.sender === user_id ? message.receiver : message.sender)} className="list-group-item list-group-item-action border-0">
                   <small><div className="badge bg-success float-right text-white">{moment.utc(message.timestamp).local().startOf('seconds').fromNow()}</div></small>
                   <div className="d-flex align-items-start">
                     {message.sender !== user_id && 

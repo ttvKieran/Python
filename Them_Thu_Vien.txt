@@ -1,9 +1,13 @@
 Django
 pip install django django-rest-framework django-cors-headers django-rest-framework-simplejwt
 pip install django-jazzmin
-pip install channels channels-redis
+pip install pyjwt
+pip install django python-socketio eventlet
 
 React
 npx create-react-app frontend
 Npm install axios dayjs jwt-decode react-router-dom@5.2.0
 npm install sweetalert2
+npm install socket.io
+npm install emoji-picker-element
+npm install lucide-react

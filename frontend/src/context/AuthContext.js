@@ -1,9 +1,11 @@
 import {createContext, useState, useEffect} from "react";
 import { jwtDecode as jwt_decode } from 'jwt-decode';
 import {useHistory} from "react-router-dom";
+import io from 'socket.io-client';
 const swal = require('sweetalert2')
 
 const AuthContext = createContext();
+const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || 'http://localhost:8000';
 
 export default AuthContext
 
@@ -13,7 +15,6 @@ export const AuthProvider = ({ children }) => {
             ? JSON.parse(localStorage.getItem("authTokens"))
             : null
     );
-    
 
     const [user, setUser] = useState(() => 
         localStorage.getItem("authTokens")
@@ -21,6 +22,45 @@ export const AuthProvider = ({ children }) => {
             : null
     );
 
+    const [socket, setSocket] = useState(null);
+    //Kết nối socket
+    useEffect(() => {
+        const newSocket = io(SOCKET_URL, {
+            transports: ['websocket'],
+            cors: {
+                origin: "http://localhost:3000",
+                credentials: true
+            },
+            withCredentials: true
+        });
+        newSocket.on('connect_error', (error) => {
+            console.error('Connection error:', error);
+        });
+        setSocket(newSocket);
+        return () => newSocket.close();
+    }, []);
+
+    // useEffect(() => {
+    //     if (!socket) return;
+    //     socket.emit('get_friend', {
+    //         user_id: user_id,
+    //     });
+    //     socket.on('get_friend', (data) => {
+    //         if (data.userCurrent === user_id)
+    //             setUsers(prev => [...data.user_data]);
+    //     });
+    //     socket.on('user_connected', (data) => {
+    //         console.log('User connected:', data.message);
+    //     });
+    //     socket.on('user_disconnected', (data) => {
+    //         console.log('User disconnected:', data.message);
+    //     });
+    //     return () => {
+    //         socket.off('get_friend')
+    //         socket.off('user_connected');
+    //         socket.off('user_disconnected');
+    //     };
+    // }, [socket]);
 
     const [loading, setLoading] = useState(true);
 
@@ -37,12 +77,17 @@ export const AuthProvider = ({ children }) => {
             })
         })
         const data = await response.json()
-        console.log(data);
 
         if(response.status === 200){
-            console.log("Logged In");
             setAuthTokens(data)
             setUser(jwt_decode(data.access))
+            const newUser = jwt_decode(data.access)
+            console.log(newUser.user_id)
+
+            socket.emit('login_user', {
+                'user_id': newUser.user_id,
+            });
+
             localStorage.setItem("authTokens", JSON.stringify(data))
             history.push("/")
             swal.fire({
@@ -139,6 +184,12 @@ export const AuthProvider = ({ children }) => {
     };
 
     const logoutUser = () => {
+        console.log(user.user_id)
+
+        socket.emit('logout_user', {
+            'user_id': user.user_id,
+        });
+
         setAuthTokens(null)
         setUser(null)
         localStorage.removeItem("authTokens")

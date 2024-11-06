@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useContext} from "react"
-import { Link, useHistory } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import AuthContext from '../../context/AuthContext'
+import './style.css'
 
 function AuthenticationPage() {
   //Xử lý phần login
   const {loginUser} = useContext(AuthContext)
-  const history = useHistory()
   const handleSubmit = async e => {
     e.preventDefault()
     const email = e.target.email.value

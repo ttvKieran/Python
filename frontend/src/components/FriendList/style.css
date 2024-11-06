@@ -1,0 +1,60 @@
+.user-list {
+    padding: 20px;
+    max-width: 400px;
+    margin: 0 auto;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.friend-list {
+    list-style-type: none;
+    padding: 0;
+}
+
+.user-item {
+    display: flex;
+    align-items: center;
+    margin: 10px 0;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+    position: relative;
+}
+
+.user-fullname {
+    font-weight: bold;
+    margin-right: 10px;
+    flex-grow: 1;
+}
+
+.status-indicator {
+    font-size: 14px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    color: white;
+}
+
+.status-indicator.online {
+    background-color: #4caf50; /* Màu xanh lá cho trạng thái Online */
+}
+
+.status-indicator.offline {
+    background-color: #f44336; /* Màu đỏ cho trạng thái Offline */
+}
+
+.unfriend-button {
+    padding: 5px 10px;
+    font-size: 14px;
+    color: #fff;
+    background-color: #ff6347; /* Màu đỏ cho nút Hủy kết bạn */
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.unfriend-button:hover {
+    background-color: #ff4500; /* Màu đậm hơn khi hover */
+}

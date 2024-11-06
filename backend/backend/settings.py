@@ -16,7 +16,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-=0k=&q3$v87qg5kj3_94^q+dac1(xq7=^(ju^05otm=8+kv+)3'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 # Application definition
 INSTALLED_APPS = [
     'jazzmin',
@@ -131,4 +131,10 @@ SIMPLE_JWT = {
 'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
 }
 CORS_ALLOW_ALL_ORIGINS = True
+SOCKET_IO_URL = 'http://localhost:8000'
+# Cấu hình cookie
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = 'Strict'
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
 AUTH_USER_MODEL = 'api.User'
