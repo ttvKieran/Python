@@ -1,20 +1,19 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { jwtDecode as jwt_decode } from "jwt-decode";
 import io from 'socket.io-client';
+import AuthContext from '../../context/AuthContext'
 import { Link } from 'react-router-dom'
-import './style.css'
 
 const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || 'http://localhost:8000';
 
 const FriendRequest = () => {
-    // lấy tài khoản đăng nhập
+    const { logoutUser } = useContext(AuthContext);
     const token = localStorage.getItem("authTokens");
     const decoded = jwt_decode(token)
     const user_id = decoded.user_id
-    const [users, setUsers] = useState([]);    // danh sách người dùng
-    // const [loading, setLoading] = useState(true); 
+    const [users, setUsers] = useState([]);   
     const [socket, setSocket] = useState(null);
-    const [friendRequests, setFriendRequests] = useState([]); // Trạng thái lưu yêu cầu kết bạn
+    const [friendRequests, setFriendRequests] = useState([]); 
 
     //Kết nối socket
     useEffect(() => {
@@ -26,13 +25,10 @@ const FriendRequest = () => {
             },
             withCredentials: true
         });
-
         newSocket.on('connect_error', (error) => {
             console.error('Connection error:', error);
         });
-
         setSocket(newSocket);
-
         return () => newSocket.close();
     }, []);
 
@@ -42,6 +38,7 @@ const FriendRequest = () => {
             user_id: user_id,
         });
         socket.on('get_friend', (data) => {
+            console.log(data)
             if (data.userCurrent === user_id)
                 setUsers(prev => [...data.user_data]);
         });
@@ -51,11 +48,8 @@ const FriendRequest = () => {
             if (userItem) {
                 const statusIndicator = userItem.querySelector('.status-indicator');
                 if (statusIndicator) {
-                    // Thay đổi class
                     statusIndicator.classList.add('online');
                     statusIndicator.classList.remove('offline');
-
-                    // Thay đổi text
                     statusIndicator.textContent = 'Online';
                 }
             }
@@ -66,11 +60,8 @@ const FriendRequest = () => {
             if (userItem) {
                 const statusIndicator = userItem.querySelector('.status-indicator');
                 if (statusIndicator) {
-                    // Thay đổi class
                     statusIndicator.classList.remove('online');
                     statusIndicator.classList.add('offline');
-
-                    // Thay đổi text
                     statusIndicator.textContent = 'Offline';
                 }
             }
@@ -109,33 +100,52 @@ const FriendRequest = () => {
     };
 
     return (
-        <div className="user-list">
-            <Link className="btn btn-primary m1" to="/">Trò chuyện</Link>
-            <Link className="btn btn-primary m1" to="/user-list/">Danh sách người dùng</Link>
-            <Link className="btn btn-primary m1" to="/friend-list/">Danh sách bạn bè</Link>
-            <Link className="btn btn-primary m1" to="/friend-request">Lời mời kết bạn</Link>
-            <h2>Danh sách bạn bè</h2>
-            <ul className="friend-list">
-                {users.map(user => (
-                    <>
-                        {user.id !== user_id &&
-                            <li key={user.id} className="user-item" data-userid={user.id}>
-                                <span className="user-fullname">{user.fullname}</span>
-
-                                {/* Hiển thị trạng thái online/offline */}
-                                <span className={`status-indicator ${user.status_online}`}>
-                                    {user.status_online == "online" ? "Online" : "Offline"}
-                                </span>
-
-                                <button onClick={() => handleCancelFriend(user.id)} className="unfriend-button">
-                                    Hủy kết bạn
-                                </button>
-                            </li>
-                        }
-                    </>
-                ))}
-            </ul>
-        </div>
+        <>
+            <div className="navbar-list">
+                <Link to="/">
+                    <i className="fas fa-inbox" /> Inbox
+                </Link>
+                <Link to="/profile">
+                    <i className="fas fa-user" /> Profile
+                </Link>
+                <Link to="/friend-request/">
+                    <i className="fas fa-user-plus" /> Friend Requests
+                </Link>
+                <Link to="/friend-list/">
+                    <i className="fas fa-users" /> Friends List
+                </Link>
+                <Link to="/user-list/">
+                    <i className="fas fa-address-book" /> User List
+                </Link>
+                <Link onClick={logoutUser}>
+                    <i className="fas fa-sign-out-alt" /> Log Out
+                </Link>
+            </div>
+            <div className="container-list">
+                <div className="friend-container">
+                    <div className="friend-list">
+                        {users.map(user => (
+                            <>
+                                {user.id !== user_id &&
+                                    <li key={user.id} className="friend-card1" data-userid={user.id}>
+                                        <img
+                                            alt="Person"
+                                            height={150}
+                                            src={SOCKET_URL + user.image}
+                                            width={150}
+                                        />
+                                        <span>{user.fullname}</span>
+                                        <button style={{ backgroundColor: "#4D4F50" }} onClick={() => handleCancelFriend(user.id)}>
+                                            Unfriend
+                                        </button>
+                                    </li>
+                                }
+                            </>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </>
     );
 };
 

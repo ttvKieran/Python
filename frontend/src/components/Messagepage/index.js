@@ -1,424 +1,323 @@
-import { React, useContext, useState, useEffect } from 'react'
+import { React, useContext, useState, useEffect, useRef } from 'react'
 import { jwtDecode as jwt_decode } from "jwt-decode";
 import AuthContext from '../../context/AuthContext'
-import useAxios from '../../utils/useAxios'
-import { Link, useHistory } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import moment from 'moment'
+import io from 'socket.io-client';
+
 import './style.css'
 
+const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || 'http://localhost:8000';
+
 function Messagepage() {
-  const { user, logoutUser, getAuthTokens } = useContext(AuthContext)
-  // Get and Decode Token
+
+  const { logoutUser } = useContext(AuthContext)
   const token = localStorage.getItem("authTokens");
   const decoded = jwt_decode(token)
   const user_id = decoded.user_id
-  const baseURL = 'http://127.0.0.1:8000/api'
-  // console.log(user)
-  // Create New State
   const [messages, setMessages] = useState([])
-  let [newSearch, setnewSearch] = useState({ search: "", });
-  // Initialize the useAxios Function to post and get data from protected routes
-  const axios = useAxios()
-  // Get Userdata from decoded token
-  const username = decoded.username
-  const history = useHistory()
+  const [groups, setGroups] = useState([])
+  const [socket, setSocket] = useState(null);
+  const [showMenu, setShowMenu] = useState(false);
+  const functionListRef = useRef(null);
+  const buttonRefTog = useRef(null);
+  const [activeTab, setActiveTab] = useState('inbox');
+  const [friends, setFriends] = useState([]);
+  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [titleGroup, setTitleGroup] = useState('');
+  const [users, setUsers] = useState([]);
+  const [userAll, setUserAll] = useState([]);
+
 
   useEffect(() => {
-    try {
-      // Send a get request to the api endpoint to get the message of the logged in user
-      axios.get(baseURL + '/message/' + user_id + '/').then((res) => {
-        // Set the data that was gotten back from the database via the api to the setMessage state
-        setMessages(res.data)
-        // Console Log the data that was gotten from the db
-        console.log(res.data);
-      })
-    } catch (error) {
-      console.log(error);
+    const newSocket = io(SOCKET_URL, {
+      transports: ['websocket'],
+      cors: {
+        origin: "http://localhost:3000",
+        credentials: true
+      },
+      withCredentials: true
+    });
+    newSocket.on('connect_error', (error) => {
+      console.error('Connection error:', error);
+    });
+    newSocket.emit('get_chat_list', {
+      user_id: user_id,
+    });
+    newSocket.emit('get_search_user', {
+      user_id: user_id,
+    });
+    setSocket(newSocket);
+    console.log(newSocket)
+    return () => newSocket.close();
+  }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+    socket.on('chat_list', (data) => {
+      setMessages(prev => {
+        return [...data.chat_list];
+      });
+      setGroups([...data.chat_list_room]);
+    });
+    socket.emit('get_user_all', {
+      user_id: user_id,
+    });
+    socket.on('get_user_all', (data) => {
+      setUserAll(prev => [...data.user_data]);
+  });
+    socket.on('chat_list', (data) => {
+      setFriends(prev => [...data.chat_list]);
+    });
+    socket.on('get_search_user', (data) => {
+      if (data.userCurrent == user_id)
+          setUsers(prev => {
+              return [...data.user_data];
+          });
+    })
+    socket.on('user_connected', (data) => {
+      console.log('User connected:', data.message);
+    });
+    socket.on('user_disconnected', (data) => {
+      console.log('User disconnected:', data.message);
+    });
+    return () => {
+      socket.off('user_connected');
+      socket.off('user_disconnected');
+    };
+  }, [socket]);
+
+  const handleMenuClick = (event) => {
+    setShowMenu((prevShowMenu) => !prevShowMenu); // Toggle hiển thị hộp lựa chọn
+  };
+
+  // Sử dụng useEffect để cập nhật vị trí của menu khi nó hiển thị
+  useEffect(() => {
+    if (showMenu && functionListRef.current && buttonRefTog.current) {
+      const buttonRect = buttonRefTog.current.getBoundingClientRect();
+      const functionList = functionListRef.current;
+
+      functionList.style.top = `${buttonRect.bottom + window.scrollY}px`;
+      functionList.style.left = `${buttonRect.left + window.scrollX}px`;
     }
-  }, [])
+  }, [showMenu]);
+
+  //Modal
+  const handleCreateGroupModal = () => {
+    setShowCreateModal(true);
+  }
+
+  const handleCreateGroup = () => {
+    console.log(selectedUsers)
+    console.log(titleGroup);
+    socket.emit("create_group_chat", {
+      user_ids: selectedUsers,
+      group_name: titleGroup,
+    });
+    socket.on("group_chat_created", (data) => {
+      console.log("Group Chat Created:", data);
+      // Xử lý dữ liệu của nhóm được tạo ở đây (data sẽ chứa thông tin nhóm mới)
+    });
+    setSelectedUsers([])
+    setShowCreateModal(false);
+  };
+
+  const handleCloseModal = () => {
+    setShowCreateModal(false);
+  };
+
+  const handleCheckboxChange = (userId) => {
+    setSelectedUsers((prevSelectedUsers) => {
+      if (prevSelectedUsers.includes(userId)) {
+        return prevSelectedUsers.filter((id) => id !== userId); // Bỏ chọn người dùng
+      } else {
+        return [...prevSelectedUsers, userId]; // Thêm vào danh sách người dùng được chọn
+      }
+    });
+  };
+  //End Modal
+
+  //Tìm kiếm người dùng
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filteredUsers, setFilteredUsers] = useState([users]);
+  const handleSearchChange = (event) => {
+      const keyword = event.target.value;
+      setSearchTerm(keyword);
+      if (keyword.trim() !== '') {
+          let results = friends.filter(user =>
+              user.fullname.toLowerCase().includes(keyword.toLowerCase())
+          );
+          setFilteredUsers(results);
+          results = groups.filter(group =>
+              group.group_name.toLowerCase().includes(keyword.toLowerCase())
+          );
+          setFilteredUsers(prev => { return [...prev, ...results] });
+      }
+  };
+  //End tìm kiếm người dùng
 
   return (
-    <> 
-      <main className="content">
-          <Link className="btn btn-primary m1" to="/user-list/">Danh sách người dùng</Link>
-          <Link className="btn btn-primary m1" to="/friend-list/">Danh sách bạn bè</Link>
-          <Link className="btn btn-primary m1" to="/friend-request">
-            Lời mời kết bạn
-            <span class="badge badge-light">0</span>
-          </Link>
-        <div className="content p-0">
-          {/* <div className="card"> */}
-          <div className="row g-0">
-            <div className="col-12 col-lg-5 col-xl-3 border-right">
-              
-              <div className="px-4 d-none d-md-block">
-                <div className="d-flex align-items-center">
-                  <div className="flex-grow-1">
-                    <input
-                      type="text"
-                      className="form-control my-3"
-                      placeholder="Search..."
-                    />
-                  </div>
+    <>
+      <div className="container-chat">
+        <div className="sidebar">
+          <div className="sidebar-header">
+            <button className="menu-button" ref={buttonRefTog} onClick={handleMenuClick} style={{paddingTop: "4px"}}>
+              <i className="fas fa-bars" style={{ fontSize: "20px" }} />
+            </button>
+            <div className="search-container">
+              <i className="fas fa-search search-icon" />
+              <input
+                type="text"
+                placeholder="Search for users"
+                value={searchTerm}
+                onChange={handleSearchChange}
+                className="search-input"
+              />
+            </div>
+            {showMenu && (
+              <div
+                id="functionList"
+                class="function-list"
+                ref={functionListRef}
+                style={{ position: 'absolute', display: 'block' }}
+              >
+                <ul className="menu-list">
+                  <li><Link to="/profile" className="menu-link">
+                    <i className="fas fa-user" style={{ marginRight: "12px" }} /> Profile
+                  </Link></li>
+                  <li><Link className="menu-link" to="/user-list/">
+                    <i className="fas fa-address-book" style={{ marginRight: "12px" }} />User List</Link></li>
+                  <li><Link className="menu-link" to="/friend-list/">
+                    <i className="fas fa-users" style={{ marginRight: "12px" }} />Friend List</Link></li>
+                  <li><Link className="menu-link" to="/friend-request">
+                    <i className="fas fa-user-plus" style={{ marginRight: "12px" }} />Friend Request</Link></li>
+                  <li>
+                    <a className="menu-link" onClick={logoutUser} style={{ cursor: "pointer" }}>
+                      <i className="fas fa-sign-out-alt" style={{ marginRight: "12px" }} />
+                      <span>Sign Out</span>
+                    </a>
+                  </li>
+                </ul>
+              </div>
+            )}
+          </div>
+          {searchTerm === "" ? (
+            <div className="chat-list">
+              <div className="flex gap-4 bg-gray-900">
+                <div className="tabs-container">
+                  <button
+                    className={`tab-button ${activeTab === 'inbox' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('inbox')}
+                  >
+                    Inbox
+                  </button>
+
+                  <button
+                    className={`tab-button ${activeTab === 'community' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('community')}
+                  >
+                    Community
+                  </button>
                 </div>
               </div>
-              {messages.map((message) =>
-                <Link to={'/socketIO/'+(message.sender === user_id ? message.receiver : message.sender)} className="list-group-item list-group-item-action border-0">
-                  <small><div className="badge bg-success float-right text-white">{moment.utc(message.timestamp).local().startOf('seconds').fromNow()}</div></small>
-                  <div className="d-flex align-items-start">
-                    {message.sender !== user_id && 
-                      <img src={message.sender_profile.image} className="profile-image" alt="1" width={60} height={60}/>
-                    }
-                    {message.sender === user_id && 
-                      <img src={message.receiver_profile.image} className="profile-image" alt="2" width={60} height={60}/>
-                    }
-                    <div className="flex-grow-1 ml-3" style={{fontWeight: "bold"}}>
-                      {message.sender !== user_id && 
-                        (message.sender_profile.fullname)
-                      }
-                      {message.sender === user_id && 
-                        (message.receiver_profile.fullname)
-                      }
-                      <div className="small">
-                        {message.content}
-                      </div>
-                    </div>
+              {activeTab === 'inbox' && friends.map((message) =>
+                <Link key={message.id} to={'/socketIO/' + message.room_chat_id} className="chat-item">
+                  <img alt="Loading" height={50} src={SOCKET_URL + message.image} width={50} className='avatar' />
+                  {message.status_online === 'online' &&
+                    <div className="status-indicator online"></div>
+                  }
+                  <div className="chat-info">
+                    <div className="chat-name" style={{ color: "white" }}>{message.fullname}</div>
+                    <div className="chat-message">{message.latest_message_translated}</div>
                   </div>
+                  <div className="chat-time" style={{ marginRight: "10px" }}>{moment.utc(message.latest_message_time).local().startOf('seconds').fromNow()}</div>
                 </Link>
               )}
-              <hr className="d-block d-lg-none mt-1 mb-0" />
+              {activeTab === 'community' &&
+                <>
+                  <div className="create-button-container">
+                    <button onClick={handleCreateGroupModal} className="create-button" style={{ margin: "10px 10px" }}>
+                      Create group
+                    </button>
+                  </div>
+                  {groups.map((group) =>
+                    <Link key={group.group_id} to={'/socketIO/' + group.group_id} className="chat-item">
+                      <img alt="Loading" height={50} src={SOCKET_URL + group.group_avatar} width={50} />
+                      <div className="chat-info">
+                        <div className="chat-name" style={{ color: "white" }}>{group.group_name}</div>
+                        <div className="chat-message">{group.latest_message}</div>
+                      </div>
+                    </Link>
+                  )}
+                </>
+              }
             </div>
-            <div className="col-12 col-lg-7 col-xl-9">
-              <div className="py-2 px-4 border-bottom d-none d-lg-block">
-                <div className="d-flex align-items-center py-1">
-                  <div className="position-relative">
-                    <img
-                      src="https://bootdey.com/img/Content/avatar/avatar3.png"
-                      className="rounded-circle mr-1"
-                      alt="Sharon Lessman"
-                      width={60}
-                      height={60}
-                    />
-                  </div>
-                  <div className="flex-grow-1 pl-3">
-                    <strong>Sharon Lessman</strong>
-                    <div className="text-muted small">
-                      <em>Online</em>
+          ) : (
+            <div className='chat-list'>
+              <div className="user-list-search">
+                {filteredUsers.map((message) =>
+                  <Link key={message.id} to={'/socketIO/' + message.room_chat_id} className="chat-item">
+                    <img alt="Loading" src={SOCKET_URL + (message.image ? message.image : message.group_avatar)} className='avatar' />
+                    <div className="chat-info">
+                      <div className="chat-name" style={{ color: "white" }}>{message.fullname ? message.fullname : message.group_name}</div>
+                      <div className="chat-message">{message.latest_message_content}</div>
                     </div>
-                  </div>
-                  <div>
-                    <button className="btn btn-primary btn-lg mr-1 px-3">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width={24}
-                        height={24}
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth={2}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="feather feather-phone feather-lg"
-                      >
-                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-                      </svg>
-                    </button>
-                    <button className="btn btn-info btn-lg mr-1 px-3 d-none d-md-inline-block">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width={24}
-                        height={24}
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth={2}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="feather feather-video feather-lg"
-                      >
-                        <polygon points="23 7 16 12 23 17 23 7" />
-                        <rect x={1} y={5} width={15} height={14} rx={2} ry={2} />
-                      </svg>
-                    </button>
-                    <button className="btn btn-light border btn-lg px-3">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width={24}
-                        height={24}
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth={2}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="feather feather-more-horizontal feather-lg"
-                      >
-                        <circle cx={12} cy={12} r={1} />
-                        <circle cx={19} cy={12} r={1} />
-                        <circle cx={5} cy={12} r={1} />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div className="position-relative">
-                <div className="chat-messages p-4">
-                  <div className="chat-message-right pb-4">
-                    <div>
-                      <img
-                        src="https://bootdey.com/img/Content/avatar/avatar1.png"
-                        className="rounded-circle mr-1"
-                        alt="Chris Wood"
-                        width={40}
-                        height={40}
-                      />
-                      <div className="text-muted small text-nowrap mt-2">
-                        2:33 am
-                      </div>
-                    </div>
-                    <div className="flex-shrink-1 bg-light rounded py-2 px-3 mr-3">
-                      <div className="font-weight-bold mb-1">You</div>
-                      Lorem ipsum dolor sit amet, vis erat denique in, dicunt
-                      prodesset te vix.
-                    </div>
-                  </div>
-                  <div className="chat-message-left pb-4">
-                    <div>
-                      <img
-                        src="https://bootdey.com/img/Content/avatar/avatar3.png"
-                        className="rounded-circle mr-1"
-                        alt="Sharon Lessman"
-                        width={40}
-                        height={40}
-                      />
-                      <div className="text-muted small text-nowrap mt-2">
-                        2:34 am
-                      </div>
-                    </div>
-                    <div className="flex-shrink-1 bg-light rounded py-2 px-3 ml-3">
-                      <div className="font-weight-bold mb-1">Sharon Lessman</div>
-                      Sit meis deleniti eu, pri vidit meliore docendi ut, an eum
-                      erat animal commodo.
-                    </div>
-                  </div>
-                  <div className="chat-message-right mb-4">
-                    <div>
-                      <img
-                        src="https://bootdey.com/img/Content/avatar/avatar1.png"
-                        className="rounded-circle mr-1"
-                        alt="Chris Wood"
-                        width={40}
-                        height={40}
-                      />
-                      <div className="text-muted small text-nowrap mt-2">
-                        2:35 am
-                      </div>
-                    </div>
-                    <div className="flex-shrink-1 bg-light rounded py-2 px-3 mr-3">
-                      <div className="font-weight-bold mb-1">You</div>
-                      Cum ea graeci tractatos.
-                    </div>
-                  </div>
-                  <div className="chat-message-left pb-4">
-                    <div>
-                      <img
-                        src="https://bootdey.com/img/Content/avatar/avatar3.png"
-                        className="rounded-circle mr-1"
-                        alt="Sharon Lessman"
-                        width={40}
-                        height={40}
-                      />
-                      <div className="text-muted small text-nowrap mt-2">
-                        2:36 am
-                      </div>
-                    </div>
-                    <div className="flex-shrink-1 bg-light rounded py-2 px-3 ml-3">
-                      <div className="font-weight-bold mb-1">Sharon Lessman</div>
-                      Sed pulvinar, massa vitae interdum pulvinar, risus lectus
-                      porttitor magna, vitae commodo lectus mauris et velit. Proin
-                      ultricies placerat imperdiet. Morbi varius quam ac venenatis
-                      tempus.
-                    </div>
-                  </div>
-                  <div className="chat-message-left pb-4">
-                    <div>
-                      <img
-                        src="https://bootdey.com/img/Content/avatar/avatar3.png"
-                        className="rounded-circle mr-1"
-                        alt="Sharon Lessman"
-                        width={40}
-                        height={40}
-                      />
-                      <div className="text-muted small text-nowrap mt-2">
-                        2:37 am
-                      </div>
-                    </div>
-                    <div className="flex-shrink-1 bg-light rounded py-2 px-3 ml-3">
-                      <div className="font-weight-bold mb-1">Sharon Lessman</div>
-                      Cras pulvinar, sapien id vehicula aliquet, diam velit
-                      elementum orci.
-                    </div>
-                  </div>
-                  <div className="chat-message-right mb-4">
-                    <div>
-                      <img
-                        src="https://bootdey.com/img/Content/avatar/avatar1.png"
-                        className="rounded-circle mr-1"
-                        alt="Chris Wood"
-                        width={40}
-                        height={40}
-                      />
-                      <div className="text-muted small text-nowrap mt-2">
-                        2:38 am
-                      </div>
-                    </div>
-                    <div className="flex-shrink-1 bg-light rounded py-2 px-3 mr-3">
-                      <div className="font-weight-bold mb-1">You</div>
-                      Lorem ipsum dolor sit amet, vis erat denique in, dicunt
-                      prodesset te vix.
-                    </div>
-                  </div>
-                  <div className="chat-message-left pb-4">
-                    <div>
-                      <img
-                        src="https://bootdey.com/img/Content/avatar/avatar3.png"
-                        className="rounded-circle mr-1"
-                        alt="Sharon Lessman"
-                        width={40}
-                        height={40}
-                      />
-                      <div className="text-muted small text-nowrap mt-2">
-                        2:39 am
-                      </div>
-                    </div>
-                    <div className="flex-shrink-1 bg-light rounded py-2 px-3 ml-3">
-                      <div className="font-weight-bold mb-1">Sharon Lessman</div>
-                      Sit meis deleniti eu, pri vidit meliore docendi ut, an eum
-                      erat animal commodo.
-                    </div>
-                  </div>
-                  <div className="chat-message-right mb-4">
-                    <div>
-                      <img
-                        src="https://bootdey.com/img/Content/avatar/avatar1.png"
-                        className="rounded-circle mr-1"
-                        alt="Chris Wood"
-                        width={40}
-                        height={40}
-                      />
-                      <div className="text-muted small text-nowrap mt-2">
-                        2:40 am
-                      </div>
-                    </div>
-                    <div className="flex-shrink-1 bg-light rounded py-2 px-3 mr-3">
-                      <div className="font-weight-bold mb-1">You</div>
-                      Cum ea graeci tractatos.
-                    </div>
-                  </div>
-                  <div className="chat-message-right mb-4">
-                    <div>
-                      <img
-                        src="https://bootdey.com/img/Content/avatar/avatar1.png"
-                        className="rounded-circle mr-1"
-                        alt="Chris Wood"
-                        width={40}
-                        height={40}
-                      />
-                      <div className="text-muted small text-nowrap mt-2">
-                        2:41 am
-                      </div>
-                    </div>
-                    <div className="flex-shrink-1 bg-light rounded py-2 px-3 mr-3">
-                      <div className="font-weight-bold mb-1">You</div>
-                      Morbi finibus, lorem id placerat ullamcorper, nunc enim
-                      ultrices massa, id dignissim metus urna eget purus.
-                    </div>
-                  </div>
-                  <div className="chat-message-left pb-4">
-                    <div>
-                      <img
-                        src="https://bootdey.com/img/Content/avatar/avatar3.png"
-                        className="rounded-circle mr-1"
-                        alt="Sharon Lessman"
-                        width={40}
-                        height={40}
-                      />
-                      <div className="text-muted small text-nowrap mt-2">
-                        2:42 am
-                      </div>
-                    </div>
-                    <div className="flex-shrink-1 bg-light rounded py-2 px-3 ml-3">
-                      <div className="font-weight-bold mb-1">Sharon Lessman</div>
-                      Sed pulvinar, massa vitae interdum pulvinar, risus lectus
-                      porttitor magna, vitae commodo lectus mauris et velit. Proin
-                      ultricies placerat imperdiet. Morbi varius quam ac venenatis
-                      tempus.
-                    </div>
-                  </div>
-                  <div className="chat-message-right mb-4">
-                    <div>
-                      <img
-                        src="https://bootdey.com/img/Content/avatar/avatar1.png"
-                        className="rounded-circle mr-1"
-                        alt="Chris Wood"
-                        width={40}
-                        height={40}
-                      />
-                      <div className="text-muted small text-nowrap mt-2">
-                        2:43 am
-                      </div>
-                    </div>
-                    <div className="flex-shrink-1 bg-light rounded py-2 px-3 mr-3">
-                      <div className="font-weight-bold mb-1">You</div>
-                      Lorem ipsum dolor sit amet, vis erat denique in, dicunt
-                      prodesset te vix.
-                    </div>
-                  </div>
-                  <div className="chat-message-left pb-4">
-                    <div>
-                      <img
-                        src="https://bootdey.com/img/Content/avatar/avatar3.png"
-                        className="rounded-circle mr-1"
-                        alt="Sharon Lessman"
-                        width={40}
-                        height={40}
-                      />
-                      <div className="text-muted small text-nowrap mt-2">
-                        2:44 am
-                      </div>
-                    </div>
-                    <div className="flex-shrink-1 bg-light rounded py-2 px-3 ml-3">
-                      <div className="font-weight-bold mb-1">Sharon Lessman</div>
-                      Sit meis deleniti eu, pri vidit meliore docendi ut, an eum
-                      erat animal commodo.
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="flex-grow-0 py-3 px-4 border-top">
-                <div className="input-group">
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="Type your message"
-                  />
-                  <button className="btn btn-primary">Send</button>
-                </div>
+                    <div className="chat-time" style={{ marginRight: "10px" }}>{moment.utc(message.latest_message_time).local().startOf('seconds').fromNow()}</div>
+                  </Link>
+                )}
               </div>
             </div>
-          </div>
-          {/* </div> */}
+          )
+          }
         </div>
-      </main>
-      <div>
-        <a className="nav-link " onClick={logoutUser} style={{ cursor: "pointer" }}>
-          <div className="icon icon-shape icon-sm border-radius-md text-center me-2 d-flex align-items-center justify-content-center">
-            <i className="ni ni-single-copy-04 text-warning text-sm opacity-10" />
-          </div>
-          <span className="nav-link-text ms-1">Sign Out</span>
-        </a>
+        <div className="chat-window-page">
+        </div>
+        {showCreateModal && (
+                    <div className="modal">
+                        <div className="modal-content">
+                            <div className="modal-header">
+                                <h3>Create group</h3>
+                            </div>
+                            <div className="modal-body">
+                                <input
+                                    type="text"
+                                    placeholder="Group name"
+                                    className="group-name-input"
+                                    value={titleGroup}
+                                    onChange={(e) => setTitleGroup(e.target.value)}
+                                />
+                                <div className="user-list">
+                                    {userAll.map((user, index) => (
+                                      user.id !== user_id && 
+                                        <div key={user.id} className="user-item">
+                                            <label>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedUsers.includes(user.id)}
+                                                    onChange={() => handleCheckboxChange(user.id)}
+                                                />
+                                                <img src={SOCKET_URL+user.imgage} className="user-avatar"></img>
+                                                <span className="user-name">{user.fullname}</span>
+                                            </label>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="modal-footer">
+                                <button className="cancel-button" onClick={handleCloseModal}>
+                                    Hủy
+                                </button>
+                                <button className="create-button" disabled={!selectedUsers.length || !titleGroup} onClick={() => { handleCreateGroup(); }}>
+                                    Tạo nhóm
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
       </div>
     </>
+
   )
 }
 

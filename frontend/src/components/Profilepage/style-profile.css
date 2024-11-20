@@ -1,0 +1,135 @@
+.container-profile-all {
+    font-family: 'Arial', sans-serif;
+    background-color: #18191A;
+    margin: 0;
+    padding: 0;
+    color:#fff;
+    width: 100vw;
+    height: 100vh;
+}
+.container-profile {
+    display: flex;
+    justify-content: space-between;
+    padding: 20px;
+    align-items: stretch; 
+}
+.container-profile-all .edit-image-profile{
+    position: absolute;
+    bottom: 36px;
+    right: 58px;
+    width: 50px;
+    height: 50px;
+    background-color: black;
+    border-radius: 50%;
+}
+.container-profile .form-container, .profile-container {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+.container-profile .form-container {
+    width: 65%;
+    background-color: #242526;
+    height: auto; 
+}
+.container-profile .profile-container {
+    width: 33%;
+    height: auto;
+    text-align: center;
+    background-color: #242526;
+}
+.container-profile .form-header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+.container-profile .form-group {
+    margin-bottom: 15px;
+    flex: 0 0 calc(50% - 10px);
+    box-sizing: border-box; 
+}
+.container-profile .form-group label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #ffffff;
+}
+.container-profile .form-group input, .form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border-radius: 5px;
+    border: #18191A;
+}
+.container-profile .form-group input{
+    background-color: #18191A;
+    color: #ffffff;
+    width: 100%;
+}
+
+.form-group select{
+    width: 50%;
+    height: 40%;
+    border-radius: 5px;
+    margin-bottom: 5px;
+    background-color: #18191A;
+    border: #18191A;
+    color: #fff;
+}
+
+.container-profile .note{
+    margin-top: 20px;
+}
+
+.container-profile .form-group textarea {
+    margin-top: 10px;
+    resize: none;
+    background-color: #18191A;
+    color :#ffffff;
+}
+
+.container-profile .update {
+    padding-left: 81.5%;
+}
+
+.container-profile .update-btn {
+    background-color: #00bcd4;
+    color: #fff;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.container-profile .profile-header {
+    overflow: hidden;
+    position: relative;
+}
+.container-profile .profile-header img {
+    width: 250px;
+    height: 250px; 
+    object-fit: cover; 
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+    border-radius: 50%;
+}
+
+.container-profile .profile-info {
+    margin-top: 60px;
+}
+.container-profile .profile-info h3 {
+    color: #00bcd4;
+    margin: 10px 0;
+}
+.container-profile .profile-info p {
+    color: #999;
+    margin: 5px 0;
+}
+.container-profile .social-icons {
+    margin-top: 20px;
+}
+.container-profile .social-icons a {
+    color: #999;
+    margin: 0 10px;
+    text-decoration: none;
+}

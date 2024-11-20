@@ -1,52 +1,439 @@
-
-.chat-online {
-    color: #34ce57
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css');
+body{
+    margin: 0;
+    font-family: Arial, sans-serif;
+    /* background-color: #1e1e1e; */
+    /* color: #fff; */
+}
+.container-chat{
+    display: flex;
+    width: 100vw;
+    height: 100vh;
+    color: #fff;
+}
+.sidebar {
+    flex: 0 0 25%; /* Đặt chiều rộng cố định cho sidebar */
+    min-width: 15px; /* Đặt chiều rộng tối thiểu cho sidebar */
+    background-color: #2a2a2a;
+    overflow-y: auto; /* Thêm cuộn nếu nội dung quá dài */
+}
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    padding: 17px;
+    background-color: #333;
+}
+.chat-window-page {
+    flex: 1; /* Phần còn lại sẽ chiếm toàn bộ không gian */
+    overflow-y: auto; /* Thêm cuộn nếu nội dung quá dài */
+    height: 100vh;
 }
 
-.chat-offline {
-    color: #e4606d
+
+/* Ẩn chat-list khi chiều rộng gần bằng chiều rộng của chat-window */
+@media (max-width: 800px) {
+    .chat-item .chat-info .chat-name,
+    .chat-item .chat-info .chat-message,
+    .chat-item .chat-info .chat-time {
+        display: none; /* Ẩn tên và tin nhắn khi chiều rộng nhỏ hơn 600px */
+    }
+}
+   
+.menu-button {
+    background: none; /* Không có nền */
+    border: none; /* Không có viền */
+    cursor: pointer; /* Hiển thị con trỏ khi di chuột qua */
+    font-size: 24px; /* Kích thước biểu tượng */
+    color: white; /* Màu sắc biểu tượng */
+    padding-top: 4px; /* Khoảng cách bên trong nút */
 }
 
-.chat-messages {
+.menu-button:hover {
+    background-color: rgba(255, 255, 255, 0.2); /* Thay đổi màu nền khi di chuột qua */
+    border-radius: 5px; /* Bo tròn góc */
+}
+    
+.chat-list {
+    flex: 1;
+    overflow-y: auto;
+}
+.chat-item {
+    display: flex;
+    align-items: center;
+    padding: 17px;
+    border-bottom: 1px solid #444;
+    border-radius: 10px;
+}
+.chat-item img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 10px;
+}
+.chat-item .chat-info {
+    flex: 1;
+}
+.chat-item .chat-info .chat-name {
+    font-weight: bold;
+}
+.chat-item .chat-info .chat-message {
+    color: #aaa;
+}
+.chat-item .chat-time {
+    color: #aaa;
+}
+.chat-item .chat-unread {
+    background-color: #4caf50;
+    color: #fff;
+    border-radius: 50%;
+    padding: 2px 6px;
+    font-size: 12px;
+}
+.chat-window-page {
+    flex: 1;
     display: flex;
     flex-direction: column;
-    height: 100vh;
-    overflow-y: scroll
+    background-color: #1e1e1e;
+    background-image: url('../../../src/components/assets/img/back.png');
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
 }
-
-.chat-message-left,
-.chat-message-right {
+.chat-header {
     display: flex;
-    flex-shrink: 0
+    align-items: center;
+    padding: 18px;
+    background-color: #333;
+}
+.chat-header img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 10px;
+}
+.chat-header .chat-name {
+    flex: 1;
+}
+.chat-header .chat-name .name {
+    font-weight: bold;
+}
+.chat-header .chat-name .status {
+    color: #aaa;
+}
+.chat-messages {
+    display: flex;
+    flex: 1;
+    flex-direction: column; /* Đặt chiều hướng là cột */
+    overflow-y: auto; /* Thêm cuộn nếu có nhiều tin nhắn */
+    height: 120vh; /* Đảm bảo chiều cao của chat-messages */
+}
+.chat-messages .date {
+    text-align: center;
+    margin: 10px 0;
+    color: #aaa;
+}
+.chat-messages .message {
+    display: flex;
+    align-items: flex-end;
+    margin: 5px 0;
+    margin-left: 8px;
+
+}
+.chat-messages .message.sent {
+    justify-content: flex-end;
+}
+.chat-messages .message .text {
+    max-width: 60%;
+    padding: 15px;
+    border-radius: 10px;
+    background-color: #333;
+    margin-bottom: 1px;
+}
+.chat-messages .message.sent .text {
+    background-color: #6a1b9a;
+    padding:15px;
+}
+.chat-messages .message .time {
+    margin-left: 5px;
+    color: #aaa;
+}
+.chat-input {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    background-color: #333;
+}
+.chat-input input {
+    flex: 1;
+    padding: 13px;
+    border: none;
+    border-radius: 9px;
+    background-color: #444;
+    color: #fff;
 }
 
-.chat-message-left {
-    margin-right: auto
+.chat-item:hover {
+    background-color: rgb(58, 62, 56); /* Màu nền tím khi hover */
+    color: white; /* Màu chữ trắng để dễ đọc */
+}
+.menu-button {
+    background: none; /* Không có nền */
+    border: none; /* Không có viền */
+    cursor: pointer; /* Hiển thị con trỏ khi di chuột qua */
+    font-size: 24px; /* Kích thước biểu tượng */
+    color: white; /* Màu sắc biểu tượng */
+    padding-top: 4px; /* Khoảng cách bên trong nút */
 }
 
-.chat-message-right {
-    flex-direction: row-reverse;
-    margin-left: auto
+.menu-button:hover {
+    background-color: rgba(255, 255, 255, 0.2); /* Thay đổi màu nền khi di chuột qua */
+    border-radius: 5px; /* Bo tròn góc */
 }
-.py-3 {
-    padding-top: 1rem!important;
-    padding-bottom: 1rem!important;
+
+.function-list {
+    position: absolute;
+    top: 50px; /* Điều chỉnh vị trí theo nhu cầu */
+    left: 10px;
+    background-color: black; /* Nền đen */
+    color: white; /* Chữ trắng */
+    border-radius: 10px; /* Bo tròn các góc */
+    border: 1px solid #444; /* Đường viền màu xám tối */
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5); /* Đổ bóng */
+    z-index: 1000;
+    width: 200px; /* Chiều rộng của danh sách */
+    display: none; /* Ẩn mặc định */
 }
-.px-4 {
-    padding-right: 1.5rem!important;
-    padding-left: 1.5rem!important;
+
+.function-list ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
 }
-.flex-grow-0 {
-    flex-grow: 0!important;
+
+.function-list li {
+    padding: 10px;
+    cursor: pointer;
 }
-.border-top {
-    border-top: 1px solid #dee2e6!important;
+
+.function-list li:hover {
+    background-color: #333; /* Nền xám khi hover */
 }
-/* CSS */
-.profile-image {
-    width: 60px;             /* Đặt chiều rộng ảnh */
-    height: 60px;            /* Đặt chiều cao ảnh, phải bằng width để tạo hình tròn */
-    border-radius: 50%;       /* Làm cho các góc của ảnh thành hình tròn */
-    object-fit: cover;        /* Đảm bảo ảnh hiển thị vừa vặn trong khung tròn */
-    border: 2px solid #ccc;   /* Đặt viền nếu muốn */
+.search-container {
+    position: relative; /* Để có thể định vị biểu tượng kính lúp */
+    width: 100%; /* Chiều rộng 100% cho container */
+    margin-bottom: 10px; /* Để có thể định vị biểu tượng kính lúp */
+}
+
+.search-icon {
+    position: absolute;
+    left: 10px; /* Khoảng cách từ bên trái */
+    top: 50%; /* Đặt ở giữa theo chiều dọc */
+    transform: translateY(-50%); /* Căn giữa hoàn hảo */
+    color: gray; /* Màu sắc của biểu tượng */
+}
+
+.search-input {
+    padding-left: 40px; /* Để tránh chữ chồng lên biểu tượng */
+    width: 100%; /* Chiều rộng 100% */
+    height: 30px; /* Tăng chiều cao của ô nhập */
+    border: 1px solid #f2f0f0; /* Đường viền */
+    border-radius: 7px; /* Bo tròn các góc */
+    font-size: 16px; /* Kích thước chữ */
+}
+.action-button {
+    border: 2px solid transparent; /* Ẩn viền mặc định */
+    border-radius: 50%; /* Bo tròn */
+    background-color: transparent; /* Nền trong suốt */
+    cursor: pointer; /* Hiển thị con trỏ khi di chuột */
+    transition: border-color 0.3s; /* Hiệu ứng chuyển tiếp cho viền */
+    padding: 9px; /* Khoảng cách cho button */
+    margin: 0 5px; /* Khoảng cách giữa các button */
+    font-size: 20px;
+}
+
+.action-button:hover {
+    border-color: #000; /* Hiện viền khi di chuột */
+}
+.action-button1 {
+    border: 2px solid transparent; /* Ẩn viền mặc định */
+    border-radius: 50%; /* Bo tròn */
+    background-color: transparent; /* Nền trong suốt */
+    cursor: pointer; /* Hiển thị con trỏ khi di chuột */
+    transition: border-color 0.3s; /* Hiệu ứng chuyển tiếp cho viền */
+    padding: 9px; /* Khoảng cách cho button */
+    margin: 0 5px; /* Khoảng cách giữa các button */
+    font-size: 20px;
+}
+
+.action-button1:hover {
+    border-color: #000; /* Hiện viền khi di chuột */
+}
+.send-button {
+    background-color: #6a1b9a; /* Màu nền tím */
+    color: white; /* Màu chữ trắng */
+    border: none; /* Không có viền */
+    padding: 13px 19px; /* Khoảng cách bên trong */
+    border-radius: 5px; /* Bo góc */
+    cursor: pointer; /* Con trỏ chuột khi hover */
+    margin-left: 10px; /* Khoảng cách bên trái */
+}
+
+.send-button:hover {
+    background-color: #6a1b9a; /* Màu khi hover */
+}
+
+.chat-input {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border-top: 1px solid #ccc;
+    font-size: 20px; 
+}
+
+.attach-button, .emoji-button {
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    margin-right: 10px; /* Khoảng cách giữa các nút */
+}
+
+.attach-button:hover, .emoji-button:hover {
+    opacity: 0.7; /* Hiệu ứng hover */
+}
+
+.attach-button i, .emoji-button i {
+    font-size: 20px; /* Kích thước biểu tượng */
+    color: #cc97c4; /* Màu sắc của biểu tượng */
+}
+.message img,
+.message.sent img {
+    width: 100%; /* Đặt chiều rộng của ảnh chiếm 100% chiều rộng của khối tin nhắn */
+    height: auto; /* Giữ tỉ lệ của ảnh */
+    max-width: 300px; /* Đặt chiều rộng tối đa của ảnh nếu cần */
+    border: none; /* Bỏ viền xung quanh ảnh */
+    display: block; /* Hiển thị ảnh như một khối */
+}
+.message .avatar {
+    margin-right: 5px; /* Khoảng cách bên phải */
+    height: 40px; /* Chiều cao hình ảnh */
+    width: 40px; /* Chiều rộng hình ảnh */
+    border-radius: 50%; /* Tạo hình tròn cho avatar */
+}
+
+/* messenger-tabs.css */
+.tabs-container {
+    display: flex;
+    gap: 16px;
+    padding: 16px;
+    background-color: #242526;
+  }
+  
+  .tab-button {
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .tab-button.active {
+    background-color: #0084ff;
+    color: white;
+  }
+  
+  .tab-button:not(.active) {
+    background-color: transparent;
+    color: #b0b3b8;
+  }
+  
+  .tab-button:not(.active):hover {
+    background-color: #3a3b3c;
+  }
+
+  .container-chat .create-button {
+    background-color: green;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+  
+  .container-chat .create-button:hover {
+    background-color: #3a3b3c;
+  }
+  
+  .container-chat .create-button-container {
+    display: flex;
+    justify-content: flex-start;
+    margin-top: 8px;
+  }
+
+  .container-chat .modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .container-chat .modal-content {
+    background-color: white;
+    padding: 24px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 400px;
+  }
+  
+  .container-chat .modal-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    font-size: 14px;
+    margin-bottom: 16px;
+  }
+  
+  .container-chat .modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+  }
+  
+  .container-chat .modal-buttons button {
+    margin-left: 8px;
+  }
+
+  .container-chat .modal .user-list {
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  
+  .container-chat .modal .user-item {
+    display: flex;
+    align-items: center;
+    padding: 5px 0;
+  }
+  
+  .container-chat .modal .user-item label {
+    margin-left: 10px;
+  }
+
+.container-chat  .chat-item .avatar {
+    margin-right: 15px;
+    height: 48px;
+    width: 48px;
+    border-radius: 50%;
+    border: 2px solid black;
+    box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.2);
+    object-fit: cover;
 }

@@ -3,6 +3,8 @@ pip install django django-rest-framework django-cors-headers django-rest-framewo
 pip install django-jazzmin
 pip install pyjwt
 pip install django python-socketio eventlet
+pip install langdetect
+pip install googletrans==4.0.0-rc1
 
 React
 npx create-react-app frontend
@@ -11,3 +13,5 @@ npm install sweetalert2
 npm install socket.io
 npm install emoji-picker-element
 npm install lucide-react
+npm i bootstrap-icons
+npm install iso-639-1

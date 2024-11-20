@@ -7,7 +7,7 @@ from django.core.wsgi import get_wsgi_application
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
 django.setup()
 
-from socket_server import create_socketio_server  # Import từ file cùng cấp
+from socket_server import create_socketio_server 
 
 # Khởi tạo Django application
 django_app = get_wsgi_application()
