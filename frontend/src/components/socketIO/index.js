@@ -11,6 +11,7 @@ import { Send } from 'lucide-react';
 const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || 'http://localhost:8000';
 
 const Socketpage = () => {
+
     const { logoutUser } = useContext(AuthContext)
     const [socket, setSocket] = useState(null);
     const [messages, setMessages] = useState([]);
@@ -23,6 +24,9 @@ const Socketpage = () => {
     const [showMenu, setShowMenu] = useState(false);
     const functionListRef = useRef(null);
     const buttonRefTog = useRef(null);
+    const [showDot, setShowDot] = useState(false);
+    const functionDotRef = useRef(null);
+    const buttonRefDot = useRef(null);
     const emojiPickerRef = useRef(null);
     const buttonRef = useRef(null);
     const tooltipRef = useRef(null);
@@ -30,6 +34,7 @@ const Socketpage = () => {
     const [selectedImage, setSelectedImage] = useState(null);
     const [imagePreview, setImagePreview] = useState('');
     const fileInputRef = useRef(null);
+    const filePdfInputRef = useRef(null);
     const token = localStorage.getItem("authTokens");
     const decoded = jwt_decode(token)
     const user_id = decoded.user_id
@@ -40,6 +45,9 @@ const Socketpage = () => {
     const [titleGroup, setTitleGroup] = useState('');
     const [groups, setGroups] = useState([]);
     const [userAll, setUserAll] = useState([]);
+    const [groupRole, setGroupRole] = useState('');
+    const [repling, setRepling] = useState(null);
+    const [messageReply, setMessageReply] = useState([]);
 
     useEffect(() => {
         const newSocket = io(SOCKET_URL, {
@@ -67,9 +75,17 @@ const Socketpage = () => {
         });
         newSocket.emit('get_chat_list', {
             user_id: user_id,
+            room_chat_id: roomChatId.id,
         });
         newSocket.emit('get_search_user', {
             user_id: user_id,
+        });
+        newSocket.emit('get_group_data', {
+            user_id: user_id,
+            room_chat_id: roomChatId.id
+        });
+        newSocket.on('get_group_data', (data) => {
+            setGroupRole(data.role)
         });
         setSocket(newSocket);
         return () => newSocket.close();
@@ -79,16 +95,19 @@ const Socketpage = () => {
         if (!socket) return;
         socket.on('new_message', (data) => {
             console.log("new message", data);
+            console.log(data.hidden)
             data.message_translated = data.message_translations[user_id]
             setMessages(prev => {
                 return [...prev, { ...data, }];
             });
         });
         socket.on('chat_list', (data) => {
-            setFriends(prev => {
-                return [...data.chat_list];
-            });
-            setGroups([...data.chat_list_room]);
+            if (data.userCurrent === user_id) {
+                setFriends(prev => {
+                    return [...data.chat_list];
+                });
+                setGroups([...data.chat_list_room]);
+            }
         });
         socket.on('connect', () => {
             socket.emit("join_room", { room_chat_id: roomChatId.id });
@@ -109,6 +128,14 @@ const Socketpage = () => {
                     return [...data.user_data];
                 });
         })
+        socket.on("hide_message", (data) => {
+            const { message_id } = data;
+            setMessages((prevMessages) =>
+                prevMessages.map((msg) =>
+                    msg.id === message_id ? { ...msg, hidden: true } : msg
+                )
+            );
+        });
         socket.on('user_connected', (data) => {
             console.log('User connected:', data.message);
         });
@@ -117,8 +144,10 @@ const Socketpage = () => {
         });
         return () => {
             socket.off('new _message');
+            socket.off('get_search_user');
+            socket.off('get_user_all');
+            socket.off('chat_list');
             socket.off('profile_response');
-            socket.off('profile_respone');
             socket.off('user_connected');
             socket.off('user_disconnected');
         };
@@ -126,16 +155,15 @@ const Socketpage = () => {
 
     //Xử lý thanh scroll
     const scrollToBottom = (smooth = true) => {
-        // messagesEndRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
         const chatMessages = document.querySelector('.chat-messages');
-        chatMessages.scrollTop = chatMessages.scrollHeight; // Cuộn xuống dưới cùng
+        chatMessages.scrollTop = chatMessages.scrollHeight;
     };
     useEffect(() => {
         if (isFirstLoad.current) {
-            scrollToBottom(false); // Cuộn tức thì khi mở hộp tin nhắn lần đầu
-            isFirstLoad.current = false; // Đặt lại sau lần đầu tiên
+            scrollToBottom(false);
+            isFirstLoad.current = false;
         } else {
-            scrollToBottom(true); // Cuộn mượt khi có tin nhắn mới
+            scrollToBottom(true);
         }
     }, [messages, roomChatId]);
 
@@ -153,21 +181,52 @@ const Socketpage = () => {
         }
     };
 
+    //Xử lý file
+    const [file, setFile] = useState(null);
+    const handleFileChange = (e) => {
+        setFile(e.target.files[0]);
+    };
+
     // Gửi tin nhắn
     const handleSubmit = (e) => {
-        if ((message.trim() || imagePreview != null) && socket) {
-            socket.emit('send_message', {
+        console.log(file)
+        if ((message.trim() || imagePreview != null || file != null) && socket) {
+            const messageData = {
                 content: message.trim(),
                 timestamp: new Date().toISOString(),
                 sender_id: user_id,
-                image: imagePreview,
                 room_chat_id: roomChatId.id,
-            });
+                reply_to_id: repling,
+            };
+
+            // Nếu có file, thêm vào dữ liệu gửi
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (event) {
+                    const fileData = event.target.result; // Chuỗi base64
+                    messageData['file'] = fileData;
+                    messageData['file_name'] = file.name;
+                    socket.emit('send_message', messageData);
+                };
+                reader.readAsDataURL(file);
+            } else {
+                // Nếu không có file, gửi bình thường
+                if (imagePreview) {
+                    messageData.image = imagePreview;
+                }
+                socket.emit('send_message', messageData);
+            }
+            console.log(messageData);
             setMessage('');
             setSelectedImage(null);
             setImagePreview('');
+            setFile(null)
+            setRepling(null);
             if (fileInputRef.current) {
                 fileInputRef.current.value = '';
+            }
+            if (filePdfInputRef.current) {
+                filePdfInputRef.current.value = '';
             }
         }
     };
@@ -176,12 +235,6 @@ const Socketpage = () => {
         e.preventDefault();
         setMessage(e.target.value);
         if (!socket) return;
-
-        // if (e.target.value.length > 0) {
-        //     socket.emit('typing', {});
-        // } else {
-        //     socket.emit('stop_typing', {});
-        // }
     };
 
     //Xử lý phần Emoji
@@ -258,9 +311,15 @@ const Socketpage = () => {
         if (showMenu && functionListRef.current && buttonRefTog.current) {
             const buttonRect = buttonRefTog.current.getBoundingClientRect();
             const functionList = functionListRef.current;
-
-            functionList.style.top = `${buttonRect.bottom + window.scrollY}px`;
-            functionList.style.left = `${buttonRect.left + window.scrollX}px`;
+        }
+    }, [showMenu]);
+    const handleDotClick = (event) => {
+        setShowDot((prevShowDot) => !prevShowDot);
+    };
+    useEffect(() => {
+        if (showMenu && functionDotRef.current && buttonRefTog.current) {
+            const buttonRect = buttonRefTog.current.getBoundingClientRect();
+            const functionList = functionDotRef.current;
         }
     }, [showMenu]);
     //End xử lý menu
@@ -294,6 +353,7 @@ const Socketpage = () => {
         }));
     };
     const [activeDropdownId, setActiveDropdownId] = useState(null);
+    const [activeDropdownFriendId, setActiveDropdownFriendId] = useState(null);
 
     const handleRecallMessage = (messageId) => {
         socket.emit('delete_message', {
@@ -308,6 +368,21 @@ const Socketpage = () => {
             )
         );
     };
+
+    const handleDeleteChat = () => {
+        socket.emit('delete_chat_friend', {
+            user_id: user_id,
+            room_chat_id: roomChatId.id
+        });
+        window.location.reload();
+    }
+
+    const handleHideMessage = (message_id) => {
+        socket.emit("hide_message", {
+            "message_id": message_id,
+            "user_id": user_id,
+        });
+    }
 
     //Modal
     const handleCreateGroupModal = () => {
@@ -325,6 +400,7 @@ const Socketpage = () => {
         });
         setSelectedUsers([])
         setShowCreateModal(false);
+        window.location.reload();
     };
 
     const handleCloseModal = () => {
@@ -339,6 +415,23 @@ const Socketpage = () => {
                 return [...prevSelectedUsers, userId]; // Thêm vào danh sách người dùng được chọn
             }
         });
+    };
+    //end modal
+    const handleSubmitLeave = async (e) => {
+        e.preventDefault();
+        socket.emit('leave_group', {
+            user_id: user_id,
+            room_chat_id: roomChatId.id,
+        });
+        window.location.href = 'http://localhost:3000';
+    };
+    const handleSubmitDelete = async (e) => {
+        e.preventDefault();
+        socket.emit('delete_group', {
+            user_id: user_id,
+            room_chat_id: roomChatId.id
+        });
+        window.location.href = 'http://localhost:3000';
     };
 
     return (
@@ -365,7 +458,7 @@ const Socketpage = () => {
                                 id="functionList"
                                 class="function-list"
                                 ref={functionListRef}
-                                style={{ position: 'absolute', display: 'block' }}
+                                style={{ position: 'absolute', display: 'block', top: "64.6667px", left: "15.66667px" }}
                             >
                                 <ul className="menu-list">
                                     <li><Link to="/profile" className="menu-link">
@@ -408,39 +501,45 @@ const Socketpage = () => {
                             </div>
                             {activeTab === 'inbox' && friends.map((message) =>
                                 <Link key={message.id} to={'/socketIO/' + message.room_chat_id} className="chat-item">
-                                    <img alt="Loading" height={50} src={SOCKET_URL + message.image} width={50} className='avatar' />
-                                    {message.status_online === 'online' &&
-                                        <div className="status-indicator online"></div>
-                                    }
-                                    <div className="chat-info">
-                                        <div className="chat-name" style={{ color: "white" }}>{message.fullname}</div>
-                                        <div className="chat-message">{message.latest_message_translated}</div>
+                                    <div className='inbox-selected' style={message.room_chat_id == roomChatId.id ? { background: "#766AC8" } : null}>
+                                        <div className='chat-avatar'>
+                                            <div style={{ position: "relative" }}>
+                                                <img alt="Loading" height={50} src={SOCKET_URL + message.image} width={50} className='avatar' />
+                                                {message.status_online === 'online' &&
+                                                    <div className="status-indicator online" style={{ width: "18px", height: "18px" }}></div>
+                                                }
+                                            </div>
+                                        </div>
+                                        <div className="chat-info">
+                                            <div className="chat-name" style={{ color: "white" }}>{message.fullname}</div>
+                                            <div className="chat-message" style={message.room_chat_id == roomChatId.id ? { color: "white" } : null}>{message.latest_message_translated}</div>
+                                        </div>
+                                        <div className="chat-time" style={{ marginRight: "10px" }}>{moment.utc(message.latest_message_time).local().startOf('seconds').fromNow()}</div>
                                     </div>
-                                    <div className="chat-time" style={{ marginRight: "10px" }}>{moment.utc(message.latest_message_time).local().startOf('seconds').fromNow()}</div>
-                                    {/* <span className={
-                                        message.status_online === 'online' ? 'status-online' :
-                                            message.status_online === 'offline' ? 'status-offline' :
-                                                message.status_online === 'busy' ? 'status-busy' : ''
-                                    }>
-                                        {message.status_online}
-                                    </span> */}
                                 </Link>
                             )}
                             {activeTab === 'community' &&
                                 <>
                                     <div className="create-button-container">
                                         <button onClick={handleCreateGroupModal} className="create-button" style={{ margin: "10px 10px" }}>
+                                            <i class="fa-solid fa-plus" style={{ marginRight: "10px" }}></i>
                                             Create group
                                         </button>
                                     </div>
                                     {groups.map((group) =>
+
                                         <Link key={group.group_id} to={'/socketIO/' + group.group_id} className="chat-item">
-                                            <img alt="Loading" height={50} src={SOCKET_URL + group.group_avatar} width={50} />
-                                            <div className="chat-info">
-                                                <div className="chat-name" style={{ color: "white" }}>{group.group_name}</div>
-                                                <div className="chat-message">{group.latest_message}</div>
+                                            <div className='inbox-selected' style={group.group_id == roomChatId.id ? { background: "#766AC8" } : null}>
+                                                <div className='chat-avatar'>
+                                                    <div style={{ position: "relative" }}>
+                                                        <img alt="Loading" height={50} src={SOCKET_URL + group.group_avatar} width={50} className='avatar' />
+                                                    </div>
+                                                </div>
+                                                <div className="chat-info">
+                                                    <div className="chat-name" style={{ color: "white" }}>{group.group_name}</div>
+                                                    <div className="chat-message" style={group.group_id == roomChatId.id ? { color: "white" } : null}>{group.latest_message}</div>
+                                                </div>
                                             </div>
-                                            {/* <div className="chat-time" style={{ marginRight: "10px" }}>{moment.utc(message.latest_message_time).local().startOf('seconds').fromNow()}</div> */}
                                         </Link>
                                     )}
                                 </>
@@ -451,46 +550,26 @@ const Socketpage = () => {
                             <div className="user-list-search">
                                 {filteredUsers.map((message) =>
                                     <Link key={message.id} to={'/socketIO/' + message.room_chat_id} className="chat-item">
-                                        <img alt="Loading" src={SOCKET_URL + (message.image ? message.image : message.group_avatar)} className='avatar'/>
-                                        <div className="chat-info">
-                                            <div className="chat-name" style={{ color: "white" }}>{message.fullname ? message.fullname : message.group_name}</div>
-                                            <div className="chat-message">{message.latest_message_content}</div>
+                                        <div className='inbox-selected' style={message.group_id == roomChatId.id ? { background: "#766AC8" } : null}>
+                                            <img alt="Loading" src={SOCKET_URL + (message.image ? message.image : message.group_avatar)} className='avatar' />
+                                            <div className="chat-info">
+                                                <div className="chat-name" style={{ color: "white" }}>{message.fullname ? message.fullname : message.group_name}</div>
+                                                <div className="chat-message">{message.latest_message_content}</div>
+                                            </div>
+                                            <div className="chat-time" style={{ marginRight: "10px" }}>{moment.utc(message.latest_message_time).local().startOf('seconds').fromNow()}</div>
                                         </div>
-                                        <div className="chat-time" style={{ marginRight: "10px" }}>{moment.utc(message.latest_message_time).local().startOf('seconds').fromNow()}</div>
                                     </Link>
                                 )}
                             </div>
                         </div>
                     )
                     }
-                    {/* <div className='chat-list box1'>
-                        <ul className="user-list-search">
-                            {filteredUsers.map(userSearch => (
-                                <li key={userSearch.id} className="user-item-search">
-                                    {userSearch.fullname}
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                    <div className="chat-list box-2">
-                        {friends.map((message) =>
-                            <Link key={message.id} to={'/socketIO/' + message.id} className="chat-item">
-                                <img alt="Loading" height={50} src={SOCKET_URL + message.image} width={50} />
-                                <div className="chat-info">
-                                    <div className="chat-name" style={{ color: "white" }}>{message.fullname}</div>
-                                    <div className="chat-message">{message.latest_message_content}</div>
-                                </div>
-                                <div className="chat-time" style={{ marginRight: "10px" }}>{moment.utc(message.latest_message_time).local().startOf('seconds').fromNow()}</div>
-                                <div className="chat-unread">5</div>
-                            </Link>
-                        )}
-                    </div> */}
                 </div>
                 <div className="chat-window-page">
                     <div className="chat-header">
                         {profile.type === "private" &&
                             <>
-                                <Link to={"/profile-user/" + profile.friend_id} style={{position: "relative"}}>
+                                <Link to={"/profile-user/" + profile.friend_id} style={{ position: "relative", marginLeft: "10px" }}>
                                     <img
                                         alt="Profile picture"
                                         src={SOCKET_URL + profile.friend_avatar}
@@ -499,7 +578,7 @@ const Socketpage = () => {
                                         className='avatar'
                                     />
                                     {profile.friend_status === 'online' &&
-                                        <div className="status-indicator online" style={{bottom: "1px", right: "12px"}}></div>
+                                        <div className="status-indicator online" style={{ bottom: "1px", right: "12px" }}></div>
                                     }
                                 </Link>
                                 <div className="chat-name">
@@ -510,244 +589,363 @@ const Socketpage = () => {
                         }
                         {profile.type === "group" &&
                             <>
-                                {/* <Link to={"/profile-user/" + profile.friend_id}> */}
-                                <img
-                                    alt="Profile picture"
-                                    src={SOCKET_URL + profile.room_avatar}
-                                    height={40}
-                                    width={40}
-                                />
-                                {/* </Link> */}
+                                <Link to={"/edit-group-chat/" + roomChatId.id} style={{ position: "relative", marginLeft: "10px" }}>
+                                    <img
+                                        alt="Profile picture"
+                                        src={SOCKET_URL + profile.room_avatar}
+                                        height={40}
+                                        width={40}
+                                    />
+                                </Link>
                                 <div className="chat-name">
                                     <div className="name">{profile.room_name}</div>
                                     <div className="status">{"online"}</div>
                                 </div>
                             </>
                         }
+                        <button className='button-dot' ref={buttonRefDot} onClick={handleDotClick}>
+                            <i class="fa-solid fa-ellipsis-vertical"></i>
+                        </button>
+
                     </div>
 
                     <div className="chat-messages">
                         {messages.map((m, index) => (
-                            <div key={index}>
-                                {m.sender_id !== user_id &&
-                                    <div className="messageSend" key={index}>
-                                        <div className='sender_avatar' style={{ ...profile.type === "group" && { height: "100px" } }}>
-                                            <img src={m.sender_image} className="avatar" alt="Loading" style={{ objectFit: "cover" }} width={50} height={50} />
-                                        </div>
-                                        {(m.content.trim()) && (
-                                            <div className="message-content">
-                                                {profile.type === "group" &&
-                                                    <>
+                            <>
+                                {!m.hidden &&
+                                    <div key={index}>
+                                        {m.sender_id !== user_id &&
+                                            <div className="messageSend" key={index} >
+                                                <div className='sender_avatar' style={{ ...profile.type === "group" && { height: "100px" } }}>
+                                                    <img src={SOCKET_URL + m.sender_image} className="avatar" alt="Loading" style={{ objectFit: "cover" }} width={50} height={50} />
+                                                </div>
+                                                {(m.content.trim()) && (
+                                                    <div className="message-content" style={{ position: "relative" }}>
                                                         <p>{m.sender}</p>
-                                                    </>
-                                                }
-                                                {m.content.trim() && !m.is_deleted && (
-                                                    <div className="text-container">
-                                                        <div className="text">
-                                                            {showOriginalMap[m.id] || m.message_translated === "<django.db.models.fields.TextField>"
-                                                                ? m.content
-                                                                : m.message_translated}
-                                                        </div>
-                                                        <button className="translate-btn" onClick={() => toggleText(m.id)}>
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-translate" viewBox="0 0 16 16">
-                                                                <path d="M4.545 6.714 4.11 8H3l1.862-5h1.284L8 8H6.833l-.435-1.286zm1.634-.736L5.5 3.956h-.049l-.679 2.022z" />
-                                                                <path d="M0 2a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v3h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-3H2a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1zm7.138 9.995q.289.451.63.846c-.748.575-1.673 1.001-2.768 1.292.178.217.451.635.555.867 1.125-.359 2.08-.844 2.886-1.494.777.665 1.739 1.165 2.93 1.472.133-.254.414-.673.629-.89-1.125-.253-2.057-.694-2.82-1.284.681-.747 1.222-1.651 1.621-2.757H14V8h-3v1.047h.765c-.318.844-.74 1.546-1.272 2.13a6 6 0 0 1-.415-.492 2 2 0 0 1-.94.31" />
-                                                            </svg>
-                                                        </button>
+
+                                                        {m.content.trim() && !m.is_deleted && (
+                                                            <div className="text-container">
+                                                                <div className="text">
+                                                                    {m.reply_to &&
+                                                                        <div className='message-reply' style={{background: "#372F2A", borderLeft: "3px solid #FAA774"}}>
+                                                                            <div style={{color: "#FAA774"}}>{m.reply_to.sender}</div>
+                                                                            <div style={{ margin: "0px", color: "white" }}>{m.reply_to.content}</div>
+                                                                        </div>
+                                                                    }
+                                                                    {showOriginalMap[m.id] || m.message_translated === "<django.db.models.fields.TextField>"
+                                                                        ? m.content
+                                                                        : m.message_translated}
+                                                                </div>
+                                                                <button className="translate-btn" onClick={() => toggleText(m.id)}>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-translate" viewBox="0 0 16 16">
+                                                                        <path d="M4.545 6.714 4.11 8H3l1.862-5h1.284L8 8H6.833l-.435-1.286zm1.634-.736L5.5 3.956h-.049l-.679 2.022z" />
+                                                                        <path d="M0 2a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v3h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-3H2a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1zm7.138 9.995q.289.451.63.846c-.748.575-1.673 1.001-2.768 1.292.178.217.451.635.555.867 1.125-.359 2.08-.844 2.886-1.494.777.665 1.739 1.165 2.93 1.472.133-.254.414-.673.629-.89-1.125-.253-2.057-.694-2.82-1.284.681-.747 1.222-1.651 1.621-2.757H14V8h-3v1.047h.765c-.318.844-.74 1.546-1.272 2.13a6 6 0 0 1-.415-.492 2 2 0 0 1-.94.31" />
+                                                                    </svg>
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                        {(m.content.trim() && m.is_deleted) &&
+                                                            <div className="text" style={{ backgroundColor: "#2F2F2F", opacity: 0.7 }}><i>{m.sender} have recalled a message</i></div>
+                                                        }
+
                                                     </div>
                                                 )}
-                                                {(m.content.trim() && m.is_deleted) &&
+
+                                                {(m.image_url && m.image_url != "/media/default.jpg") && !m.is_deleted && (
+                                                    <img
+                                                        src={m.image_url}
+                                                        alt="Message attachment"
+                                                        className="mt-2 max-w-xs rounded-lg"
+                                                    />
+                                                )}
+                                                {(m.image_url && m.image_url != "/media/default.jpg") && m.is_deleted &&
                                                     <div className="text" style={{ backgroundColor: "#2F2F2F", opacity: 0.7 }}><i>{m.sender} have recalled a message</i></div>
                                                 }
-                                            </div>
-                                        )}
-                                        {(m.image_url && m.image_url != "/media/default.jpg") && !m.is_deleted && (
-                                            <img
-                                                src={m.image_url}
-                                                alt="Message attachment"
-                                                className="mt-2 max-w-xs rounded-lg"
-                                            />
-                                        )}
-                                        {(m.image_url && m.image_url != "/media/default.jpg") && m.is_deleted &&
-                                            <div className="text" style={{ backgroundColor: "#2F2F2F", opacity: 0.7 }}><i>{m.sender} have recalled a message</i></div>
-                                        }
-                                    </div>
-                                }
-                                {m.sender_id === user_id &&
-                                    <>
-                                        <div className="message sent" key={index} style={{ marginRight: "10px" }}>
-                                            <div style={{ position: 'relative', display: 'inline-block' }}> {/* Thêm display: inline-block */}
-                                                {!m.is_deleted &&
-                                                    <button
-                                                        className='translate-btn-sender'
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setActiveDropdownId(activeDropdownId === m.id ? null : m.id);
-                                                        }}
-                                                    >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 512" width="20" height="16">
-                                                            <path fill="#ffffff" d="M64 360a56 56 0 1 0 0 112 56 56 0 1 0 0-112zm0-160a56 56 0 1 0 0 112 56 56 0 1 0 0-112zM120 96A56 56 0 1 0 8 96a56 56 0 1 0 112 0z" />
-                                                        </svg>
-                                                    </button>
-                                                }
-                                                {activeDropdownId === m.id && (
-                                                    <div className="dropdown-menu" >
-                                                        <button
-                                                            className="dropdown-item" style={{ color: "white", fontSize: "12px", fontWeight: "600" }}
-                                                            onClick={() => handleRecallMessage(m.id)}
-                                                        >
-                                                            Thu hồi tin nhắn
-                                                        </button>
+                                                {m.file_url && !m.is_deleted && (
+                                                    <div className='file-upload' style={{ backgroundColor: "#2F2F2F" }}>
+                                                        <a href={SOCKET_URL + m.file_url} download={SOCKET_URL + m.file_name} target="_blank" rel="noopener noreferrer">
+                                                            {m.file_name}
+                                                        </a>
                                                     </div>
                                                 )}
-                                            </div>
-                                            {(m.content.trim() && !m.is_deleted) && (
-                                                <div className="text">{m.content}</div>
-                                            )}
-                                            {(m.content.trim() && m.is_deleted) &&
-                                                <div className="text" style={{ backgroundColor: "#2F2F2F", opacity: 0.7 }}><i>You have recalled a message</i></div>
-                                            }
-                                            <br></br>
-                                            {(m.image_url && m.image_url != "/media/default.jpg") && !m.is_deleted && (
-                                                <img
-                                                    src={m.image_url}
-                                                    alt="Message attachment"
-                                                    className="mt-2 max-w-xs rounded-lg"
-                                                />
-                                            )}
-                                            {(m.image_url && m.image_url != "/media/default.jpg") && m.is_deleted &&
-                                                <div className="text" style={{ backgroundColor: "#2F2F2F", opacity: 0.7 }}><i>You have recalled a message</i></div>
-                                            }
-                                            {/* <div className="flex-shrink-1 bg-light rounded py-2 px-3 ml-3">
-                                            <div className="font-weight-bold mb-1">You</div>
-                                            <div class="message-container">
-                                                <p class="message-text">{m.content}</p>
-                                            </div>
-                                            {(m.image_url && m.image_url != "/media/default.jpg") && (
-                                                <img
-                                                    src={SOCKET_URL + m.image_url}
-                                                    alt="Message attachment"
-                                                    className="mt-2 max-w-xs rounded-lg"
-                                                />
-                                            )}
-                                        </div> */}
-                                        </div>
-                                    </>
+                                                {m.file_url && m.is_deleted &&
+                                                    <div className="text" style={{ backgroundColor: "#2F2F2F", opacity: 0.7 }}><i>You have recalled a message</i></div>
+                                                }
+                                                {!m.is_deleted &&
+                                                    <div style={{ position: "relative" }}>
+                                                        <button
+                                                            className='translate-btn-sender'
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setActiveDropdownFriendId(activeDropdownFriendId === m.id ? null : m.id);
+                                                            }}
+                                                            style={{ padding: "8px 0px" }}
+                                                        >
+                                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 512" width="20" height="16">
+                                                                <path fill="#ffffff" d="M64 360a56 56 0 1 0 0 112 56 56 0 1 0 0-112zm0-160a56 56 0 1 0 0 112 56 56 0 1 0 0-112zM120 96A56 56 0 1 0 8 96a56 56 0 1 0 112 0z" />
+                                                            </svg>
+                                                        </button>
+                                                        {activeDropdownFriendId === m.id && !m.is_deleted && (
+                                                            <div className="dropdown-menu" style={{ top: "-87px", right: "-156px", height: "88px" }}>
+                                                                <button
+                                                                    className="dropdown-item"
+                                                                    onClick={() => (setRepling(m.id), setActiveDropdownFriendId(false), setMessageReply(m))}
+                                                                >
+                                                                    <i class="fa-solid fa-reply"></i>
+                                                                    Reply
+                                                                </button>
+                                                                <button
+                                                                    className="dropdown-item"
+                                                                    onClick={() => handleHideMessage(m.id)}
 
+                                                                >
+                                                                    <i class="fa-regular fa-eye-slash"></i>
+                                                                    Hide
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                }
+
+                                            </div>
+                                        }
+                                        {m.sender_id === user_id &&
+                                            <>
+                                                <div className="message sent" key={index} style={{ marginRight: "10px" }}>
+                                                    <div style={{ position: 'relative', display: 'inline-block' }}> {/* Thêm display: inline-block */}
+                                                        {!m.is_deleted &&
+                                                            <button
+                                                                className='translate-btn-sender'
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setActiveDropdownId(activeDropdownId === m.id ? null : m.id);
+                                                                }}
+                                                            >
+                                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 512" width="20" height="16">
+                                                                    <path fill="#ffffff" d="M64 360a56 56 0 1 0 0 112 56 56 0 1 0 0-112zm0-160a56 56 0 1 0 0 112 56 56 0 1 0 0-112zM120 96A56 56 0 1 0 8 96a56 56 0 1 0 112 0z" />
+                                                                </svg>
+                                                            </button>
+                                                        }
+                                                        {activeDropdownId === m.id && (
+                                                            <div className="dropdown-menu" >
+                                                                <button
+                                                                    className="dropdown-item"
+                                                                    onClick={() => handleHideMessage(m.id)}
+                                                                    style={{ borderRadius: "0px" }}
+                                                                >
+                                                                    <i class="fa-regular fa-eye-slash"></i>
+                                                                    Hide
+                                                                </button>
+                                                                <button
+                                                                    className="dropdown-item"
+                                                                    onClick={() => handleRecallMessage(m.id)}
+                                                                    style={{ color: "#CC3532" }}
+                                                                >
+                                                                    <i class="fa-solid fa-trash" ></i>
+                                                                    Detele
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    {(m.content.trim() && !m.is_deleted) && (
+                                                        <div className="text">
+                                                            {m.reply_to &&
+                                                                <div className='message-reply'>
+                                                                    <div style={{fontWeight: 600}}>{m.reply_to.sender}</div>
+                                                                    <p style={{ margin: "0px" }}>{m.reply_to.content}</p>
+                                                                </div>
+                                                            }
+                                                            {m.content}
+                                                        </div>
+                                                    )}
+                                                    {(m.content.trim() && m.is_deleted) &&
+                                                        <div className="text" style={{ backgroundColor: "#2F2F2F", opacity: 0.7 }}><i>You have recalled a message</i></div>
+                                                    }
+                                                    <br></br>
+                                                    {(m.image_url && m.image_url != "/media/default.jpg") && !m.is_deleted && (
+                                                        <img
+                                                            src={m.image_url}
+                                                            alt="Message attachment"
+                                                            className="mt-2 max-w-xs rounded-lg"
+                                                        />
+                                                    )}
+                                                    {(m.image_url && m.image_url != "/media/default.jpg") && m.is_deleted &&
+                                                        <div className="text" style={{ backgroundColor: "#2F2F2F", opacity: 0.7 }}><i>You have recalled a message</i></div>
+                                                    }
+                                                    {m.file_url && !m.is_deleted && (
+                                                        <div className='file-upload' >
+                                                            <a href={SOCKET_URL + m.file_url} download={SOCKET_URL + m.file_name} target="_blank" rel="noopener noreferrer">
+                                                                {m.file_name}
+                                                            </a>
+                                                        </div>
+                                                    )}
+                                                    {m.file_url && m.is_deleted &&
+                                                        <div className="text" style={{ backgroundColor: "#2F2F2F", opacity: 0.7 }}><i>You have recalled a message</i></div>
+                                                    }
+                                                </div>
+                                            </>
+
+                                        }
+                                        <div ref={messagesEndRef} />
+                                    </div>
                                 }
-                                <div ref={messagesEndRef} />
-                            </div>
+                            </>
                         ))}
                     </div>
-
-                    {/* <div className="chat-input">
-                        <button
-                            className="attach-button"
-                            style={{ backgroundColor: "transparent", border: "none" }}
-                        >
-                            <i className="fas fa-image" />
-                        </button>
-                        <button
-                            className="emoji-button"
-                            style={{ backgroundColor: "transparent", border: "none" }}
-                        >
-                            <i className="fas fa-smile" />
-                        </button>
-                        <input placeholder="Message" type="text" />
-                        <button
-                            className="send-button"
-                            style={{ backgroundColor: "purple", color: "white" }}
-                        >
-                            Send
-                        </button>
-                    </div> */}
                     {imagePreview && (
                         <div className="image-preview">
-                            <img src={imagePreview} alt="Selected preview" style={{ maxWidth: "100px", maxHeight: "100px" }} />
+                            <div className='image-preview-container'>
+                                <div className='image-preview-box'>
+                                    <button onClick={() => setImagePreview(null)}>
+                                        <i class="fa-solid fa-xmark"></i>
+                                    </button>
+                                    <div style={{ display: "flex", justifyContent: "center" }}>
+                                        <img src={imagePreview} alt="Selected preview" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    {file && (
+                        <div className="file-preview">
+                            <div className='file-preview-container'>
+                                <div className='file-preview-box'>
+                                    <button onClick={() => setFile(null)}>
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                    <div style={{ display: "flex", justifyContent: "center", fontSize: "14px" }}>
+                                        {file.name}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     )}
                     <div>
-                        <div className="chat-input">
-                            <input
-                                type="text"
-                                value={message}
-                                ref={inputRef}
-                                id='input-chat'
-                                onChange={handleTyping}
-                                placeholder="Aa"
-                            />
-                            <button
-                                ref={buttonRef} onClick={toggleTooltip} type='button'
-                                className="emoji-button"
-                                style={{ backgroundColor: "transparent", border: "none" }}
-                            >
-                                <i className="fas fa-smile" />
-                                <div className="tooltip" role="tooltip" ref={tooltipRef}>
-                                    <emoji-picker ref={emojiPickerRef}></emoji-picker>
+                        {repling !== null &&
+                            <div style={{
+                                display: "flex",
+                                justifyContent: "center",
+                                width: "91.5%"
+                            }}>
+                                <div className="message-container-reply">
+                                    <i className="fa-solid fa-reply" style={{ marginRight: "20px", color: "#65A9DC" }}></i>
+                                    <div className="message-content">
+                                        <strong>{messageReply.sender}</strong>
+                                        <p>{messageReply.content}</p>
+                                    </div>
+                                    <i class="fa-solid fa-xmark" style={{ marginLeft: "20px", color: "#65A9DC" }} onClick={() => setRepling(null)}></i>
                                 </div>
-                            </button>
-                            <button
-                                className="attach-button"
-                                style={{ backgroundColor: "transparent", border: "none" }}
-                                onClick={() => fileInputRef.current?.click()}
-                                type='button'
-                            >
-                                <i className="fas fa-image" />
-                            </button>
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept="image/*"
-                                onChange={handleImageSelect}
-                                className="hidden"
-                                // onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
-                                style={{ display: "none" }}
-                            />
+                            </div>
+                        }
+                        <div className="chat-input">
+                            <div className='chat-input-container'>
+                                <button
+                                    ref={buttonRef} onClick={toggleTooltip} type='button'
+                                    className="emoji-button"
+                                >
+                                    <i class="fa-regular fa-face-smile"></i>
+                                    <div className="tooltip" role="tooltip" ref={tooltipRef}>
+                                        <emoji-picker ref={emojiPickerRef}></emoji-picker>
+                                    </div>
+                                </button>
+                                <input
+                                    type="text"
+                                    value={message}
+                                    ref={inputRef}
+                                    id='input-chat'
+                                    onChange={handleTyping}
+                                    placeholder="Aa"
+                                    autocomplete="off"
+                                />
+
+                                <button
+                                    className="attach-button"
+                                    style={{ backgroundColor: "transparent", border: "none" }}
+                                    onClick={() => fileInputRef.current?.click()}
+                                    type='button'
+                                >
+                                    <i class="fa-regular fa-images"></i>
+                                </button>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleImageSelect}
+                                    className="hidden"
+                                    style={{ display: "none" }}
+                                />
+                                <button
+                                    className="attach-button"
+                                    style={{ backgroundColor: "transparent", border: "none", marginRight: "15px" }}
+                                    onClick={() => filePdfInputRef.current?.click()}
+                                    type='button'
+                                >
+                                    <i class="fa-solid fa-paperclip"></i>
+                                </button>
+                                <input ref={filePdfInputRef} type="file" onChange={handleFileChange} style={{ display: "none" }} />
+                            </div>
+
                             <button
                                 className="send-button"
                                 onClick={handleSubmit}
                                 type='button'
-                                style={{ backgroundColor: "purple", color: "white" }}
                             >
-                                <Send size={15} />
+                                <Send size={20} />
                             </button>
-                            {/* Upload image button */}
-                            {/* <button
-                                onClick={() => fileInputRef.current?.click()}
-                                className="p-3 text-gray-600 hover:text-gray-800 bg-gray-100 rounded-lg"
-                            >
-                                <Camera size={24} />
-                            </button>
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept="image/*"
-                                onChange={handleImageSelect}
-                                className="hidden"
-                            /> */}
-                            {/* <button
-                                type="submit"
-                                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                                disabled={!message.trim()}
-                            >
-                                <Send size={24} />
-                            </button>
-                            <>
-                                <button ref={buttonRef} onClick={toggleTooltip} type='button'>
-                                    Click me
-                                </button>
-                                <div className="tooltip" role="tooltip" ref={tooltipRef}>
-                                    <emoji-picker ref={emojiPickerRef}></emoji-picker>
-                                </div>
-                            </> */}
                         </div>
                     </div>
                 </div>
+                {showDot && (
+                    <div
+                        id="functionList"
+                        class="function-list"
+                        ref={functionDotRef}
+                        style={{ position: 'absolute', display: 'block', top: "75.6667px", left: "1046.6667px", backgroundColor: "#1F1F1F" }}
+                    >
+                        <ul className="menu-list">
+                            {profile.type === "private" &&
+                                <li><Link to={"/profile-user/" + profile.friend_id} className="menu-link">
+                                    <i className="fas fa-user" /> Profile
+                                </Link></li>
+                            }
+                            {profile.type === "group" &&
+                                <>
+                                    <li><Link to={"/edit-group-chat/" + roomChatId.id} className="menu-link">
+                                        <i class="fa-solid fa-pen-to-square"></i> Edit
+                                    </Link></li>
+                                    <li>
+                                        <button className="menu-link" onClick={handleSubmitLeave}>
+                                            <i class="fa-solid fa-right-from-bracket"></i> Leave group
+                                        </button>
+                                    </li>
+                                    {groupRole === 'superadmin' &&
+                                        <li>
+                                            <button className="menu-link" onClick={handleSubmitDelete}>
+                                                <i class="fa-solid fa-delete-left"></i> Delete Group
+                                            </button>
+                                        </li>
+                                    }
+                                </>
+                            }
+                            {/* <li>
+                                <div className='menu-link'>
+                                    <i class="fa-regular fa-hand"></i>Block User
+                                </div>
+                            </li> */}
+                            <li style={{ borderTop: "2px solid #363636" }}>
+                                <button className='menu-link' style={{ color: "#CC3532" }} onClick={handleDeleteChat}>
+                                    <i class="fa-solid fa-trash"></i>Clear Chat History
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                )}
                 {showCreateModal && (
                     <div className="modal">
                         <div className="modal-content">
                             <div className="modal-header">
-                                <h3>Create group</h3>
+                                <i class="fa-solid fa-user-group" style={{ marginLeft: "16px", marginRight: "3px" }}></i>
+                                <h2 style={{ color: "white" }}>Create group</h2>
                             </div>
                             <div className="modal-body">
                                 <input
@@ -759,28 +957,28 @@ const Socketpage = () => {
                                 />
                                 <div className="user-list">
                                     {userAll.map((user, index) => (
-                                        user.id !== user_id && 
-                                            <div key={user.id} className="user-item">
+                                        user.id !== user_id &&
+                                        <div key={user.id} className="user-item">
                                             <label>
                                                 <input
                                                     type="checkbox"
                                                     checked={selectedUsers.includes(user.id)}
                                                     onChange={() => handleCheckboxChange(user.id)}
                                                 />
-                                                <img src={SOCKET_URL+user.imgage} className="user-avatar"></img>
+                                                <img src={SOCKET_URL + user.imgage} className="user-avatar"></img>
                                                 <span className="user-name">{user.fullname}</span>
                                             </label>
                                         </div>
-                                        
+
                                     ))}
                                 </div>
                             </div>
                             <div className="modal-footer">
                                 <button className="cancel-button" onClick={handleCloseModal}>
-                                    Hủy
+                                    Cancel
                                 </button>
                                 <button className="create-button" disabled={!selectedUsers.length || !titleGroup} onClick={() => { handleCreateGroup(); }}>
-                                    Tạo nhóm
+                                    Create
                                 </button>
                             </div>
                         </div>

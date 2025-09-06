@@ -11,6 +11,7 @@ import UserListpage from './components/UserList'
 import FriendRequestpage from './components/FriendRequest'
 import FriendListpage from './components/FriendList'
 import ProfileUserpage from './components/ProfileUser'
+import EditGroupChat from './components/EditGroupChat/index'
 
 function App() {
   return(
@@ -22,6 +23,7 @@ function App() {
           <PrivateRoute component={FriendRequestpage} path="/friend-request"/>
           <PrivateRoute component={Profilepage} path="/profile"></PrivateRoute>
           <PrivateRoute component={ProfileUserpage} path="/profile-user/:id"></PrivateRoute>
+          <PrivateRoute component={EditGroupChat} path="/edit-group-chat/:id"/>
           <Route component={AuthenticationPage} path="/authentication"/>
           <PrivateRoute component={Socketpage} path="/socketIO/:id" />
           <PrivateRoute component={Messagepage} path="/" exact/>

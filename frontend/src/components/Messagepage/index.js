@@ -5,8 +5,6 @@ import { Link } from 'react-router-dom'
 import moment from 'moment'
 import io from 'socket.io-client';
 
-import './style.css'
-
 const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || 'http://localhost:8000';
 
 function Messagepage() {
@@ -28,7 +26,6 @@ function Messagepage() {
   const [titleGroup, setTitleGroup] = useState('');
   const [users, setUsers] = useState([]);
   const [userAll, setUserAll] = useState([]);
-
 
   useEffect(() => {
     const newSocket = io(SOCKET_URL, {
@@ -66,15 +63,16 @@ function Messagepage() {
     });
     socket.on('get_user_all', (data) => {
       setUserAll(prev => [...data.user_data]);
-  });
+    });
     socket.on('chat_list', (data) => {
+      console.log(data)
       setFriends(prev => [...data.chat_list]);
     });
     socket.on('get_search_user', (data) => {
       if (data.userCurrent == user_id)
-          setUsers(prev => {
-              return [...data.user_data];
-          });
+        setUsers(prev => {
+          return [...data.user_data];
+        });
     })
     socket.on('user_connected', (data) => {
       console.log('User connected:', data.message);
@@ -97,9 +95,6 @@ function Messagepage() {
     if (showMenu && functionListRef.current && buttonRefTog.current) {
       const buttonRect = buttonRefTog.current.getBoundingClientRect();
       const functionList = functionListRef.current;
-
-      functionList.style.top = `${buttonRect.bottom + window.scrollY}px`;
-      functionList.style.left = `${buttonRect.left + window.scrollX}px`;
     }
   }, [showMenu]);
 
@@ -112,6 +107,7 @@ function Messagepage() {
     console.log(selectedUsers)
     console.log(titleGroup);
     socket.emit("create_group_chat", {
+      user_id: user_id,
       user_ids: selectedUsers,
       group_name: titleGroup,
     });
@@ -121,6 +117,7 @@ function Messagepage() {
     });
     setSelectedUsers([])
     setShowCreateModal(false);
+    window.location.reload();
   };
 
   const handleCloseModal = () => {
@@ -142,18 +139,18 @@ function Messagepage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredUsers, setFilteredUsers] = useState([users]);
   const handleSearchChange = (event) => {
-      const keyword = event.target.value;
-      setSearchTerm(keyword);
-      if (keyword.trim() !== '') {
-          let results = friends.filter(user =>
-              user.fullname.toLowerCase().includes(keyword.toLowerCase())
-          );
-          setFilteredUsers(results);
-          results = groups.filter(group =>
-              group.group_name.toLowerCase().includes(keyword.toLowerCase())
-          );
-          setFilteredUsers(prev => { return [...prev, ...results] });
-      }
+    const keyword = event.target.value;
+    setSearchTerm(keyword);
+    if (keyword.trim() !== '') {
+      let results = friends.filter(user =>
+        user.fullname.toLowerCase().includes(keyword.toLowerCase())
+      );
+      setFilteredUsers(results);
+      results = groups.filter(group =>
+        group.group_name.toLowerCase().includes(keyword.toLowerCase())
+      );
+      setFilteredUsers(prev => { return [...prev, ...results] });
+    }
   };
   //End tìm kiếm người dùng
 
@@ -162,7 +159,7 @@ function Messagepage() {
       <div className="container-chat">
         <div className="sidebar">
           <div className="sidebar-header">
-            <button className="menu-button" ref={buttonRefTog} onClick={handleMenuClick} style={{paddingTop: "4px"}}>
+            <button className="menu-button" ref={buttonRefTog} onClick={handleMenuClick} style={{ paddingTop: "4px" }}>
               <i className="fas fa-bars" style={{ fontSize: "20px" }} />
             </button>
             <div className="search-container">
@@ -223,15 +220,21 @@ function Messagepage() {
               </div>
               {activeTab === 'inbox' && friends.map((message) =>
                 <Link key={message.id} to={'/socketIO/' + message.room_chat_id} className="chat-item">
-                  <img alt="Loading" height={50} src={SOCKET_URL + message.image} width={50} className='avatar' />
-                  {message.status_online === 'online' &&
-                    <div className="status-indicator online"></div>
-                  }
+                  <div className='inbox-selected'>
+                  <div className='chat-avatar'>
+                    <div style={{ position: "relative" }}>
+                      <img alt="Loading" height={50} src={SOCKET_URL + message.image} width={50} className='avatar' />
+                      {message.status_online === 'online' &&
+                        <div className="status-indicator online" style={{width: "18px", height: "18px"}}></div>
+                      }
+                    </div>
+                  </div>
                   <div className="chat-info">
                     <div className="chat-name" style={{ color: "white" }}>{message.fullname}</div>
                     <div className="chat-message">{message.latest_message_translated}</div>
                   </div>
                   <div className="chat-time" style={{ marginRight: "10px" }}>{moment.utc(message.latest_message_time).local().startOf('seconds').fromNow()}</div>
+                  </div>
                 </Link>
               )}
               {activeTab === 'community' &&
@@ -243,10 +246,16 @@ function Messagepage() {
                   </div>
                   {groups.map((group) =>
                     <Link key={group.group_id} to={'/socketIO/' + group.group_id} className="chat-item">
-                      <img alt="Loading" height={50} src={SOCKET_URL + group.group_avatar} width={50} />
+                      <div className='inbox-selected'>
+                      <div className='chat-avatar'>
+                        <div style={{ position: "relative" }}>
+                          <img alt="Loading" height={50} src={SOCKET_URL + group.group_avatar} width={50} className='avatar' />
+                        </div>
+                      </div>
                       <div className="chat-info">
                         <div className="chat-name" style={{ color: "white" }}>{group.group_name}</div>
                         <div className="chat-message">{group.latest_message}</div>
+                      </div>
                       </div>
                     </Link>
                   )}
@@ -258,12 +267,14 @@ function Messagepage() {
               <div className="user-list-search">
                 {filteredUsers.map((message) =>
                   <Link key={message.id} to={'/socketIO/' + message.room_chat_id} className="chat-item">
+                    <div className='inbox-selected' >
                     <img alt="Loading" src={SOCKET_URL + (message.image ? message.image : message.group_avatar)} className='avatar' />
                     <div className="chat-info">
                       <div className="chat-name" style={{ color: "white" }}>{message.fullname ? message.fullname : message.group_name}</div>
                       <div className="chat-message">{message.latest_message_content}</div>
                     </div>
                     <div className="chat-time" style={{ marginRight: "10px" }}>{moment.utc(message.latest_message_time).local().startOf('seconds').fromNow()}</div>
+                    </div>
                   </Link>
                 )}
               </div>
@@ -274,47 +285,47 @@ function Messagepage() {
         <div className="chat-window-page">
         </div>
         {showCreateModal && (
-                    <div className="modal">
-                        <div className="modal-content">
-                            <div className="modal-header">
-                                <h3>Create group</h3>
-                            </div>
-                            <div className="modal-body">
-                                <input
-                                    type="text"
-                                    placeholder="Group name"
-                                    className="group-name-input"
-                                    value={titleGroup}
-                                    onChange={(e) => setTitleGroup(e.target.value)}
-                                />
-                                <div className="user-list">
-                                    {userAll.map((user, index) => (
-                                      user.id !== user_id && 
-                                        <div key={user.id} className="user-item">
-                                            <label>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selectedUsers.includes(user.id)}
-                                                    onChange={() => handleCheckboxChange(user.id)}
-                                                />
-                                                <img src={SOCKET_URL+user.imgage} className="user-avatar"></img>
-                                                <span className="user-name">{user.fullname}</span>
-                                            </label>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                            <div className="modal-footer">
-                                <button className="cancel-button" onClick={handleCloseModal}>
-                                    Hủy
-                                </button>
-                                <button className="create-button" disabled={!selectedUsers.length || !titleGroup} onClick={() => { handleCreateGroup(); }}>
-                                    Tạo nhóm
-                                </button>
-                            </div>
-                        </div>
+          <div className="modal">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h3>Create group</h3>
+              </div>
+              <div className="modal-body">
+                <input
+                  type="text"
+                  placeholder="Group name"
+                  className="group-name-input"
+                  value={titleGroup}
+                  onChange={(e) => setTitleGroup(e.target.value)}
+                />
+                <div className="user-list">
+                  {userAll.map((user, index) => (
+                    user.id !== user_id &&
+                    <div key={user.id} className="user-item">
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={selectedUsers.includes(user.id)}
+                          onChange={() => handleCheckboxChange(user.id)}
+                        />
+                        <img src={SOCKET_URL + user.imgage} className="user-avatar"></img>
+                        <span className="user-name">{user.fullname}</span>
+                      </label>
                     </div>
-                )}
+                  ))}
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="cancel-button" onClick={handleCloseModal}>
+                  Cancel
+                </button>
+                <button className="create-button" disabled={!selectedUsers.length || !titleGroup} onClick={() => { handleCreateGroup(); }}>
+                  Create
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
 
@@ -322,3 +333,8 @@ function Messagepage() {
 }
 
 export default Messagepage
+
+
+
+
+

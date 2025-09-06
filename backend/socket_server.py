@@ -1,6 +1,6 @@
 import socketio
 from api.models import ChatMessage, User, Profile, Friendship, RoomChat, RoomMembership, MessageTranslation
-from funtions import add_friend, remove_friend, translate_message, get_latest_message_per_room
+from functions import add_friend, remove_friend, translate_message, get_latest_message_per_room, hide_message_for_user
 from django.utils import timezone
 from django.conf import settings
 from django.db.models import Q, Max, Subquery, OuterRef
@@ -33,12 +33,22 @@ def create_socketio_server():
         sender_id = data.get("sender_id")
         room_chat_id = data.get("room_chat_id")
         content = data.get("content", "")
+        reply_to_id = data.get("reply_to_id")  # ID của tin nhắn được trả lời
         translations_map = {}
         sender = User.objects.get(id=sender_id)
         sender_profile = Profile.objects.get(user=sender)
         room_chat = RoomChat.objects.get(id=room_chat_id)
         
+        reply_to_message = None
+        if reply_to_id:
+            try:
+                reply_to_message = ChatMessage.objects.get(id=reply_to_id)
+            except ChatMessage.DoesNotExist:
+                reply_to_message = None  # Nếu tin nhắn không tồn tại, bỏ qua
+            
         image_data = data.get("image")
+        file_data = data.get("file")
+        file_name_data = data.get("file_name")
         
         if room_chat.type_room == "private":
             receiver = room_chat.users.exclude(id=sender_id).first() 
@@ -48,6 +58,7 @@ def create_socketio_server():
                 receiver=receiver,
                 room_chat_id=room_chat_id,
                 content=content,
+                reply_to=reply_to_message, 
                 timestamp=timezone.now(),
                 is_read=False,
                 is_deleted=False
@@ -57,6 +68,12 @@ def create_socketio_server():
                 ext = format.split('/')[-1]
                 image_content = ContentFile(base64.b64decode(imgstr), name=f'temp.{ext}')
                 chat_message.image.save(f'message_image_{chat_message.id}.{ext}', image_content)
+            if file_data:
+                file_name, file_str = file_data.split(';base64,')
+                ext = file_name.split('/')[-1]
+                file_content = ContentFile(base64.b64decode(file_str), name=f'message_file_{chat_message.id}.{ext}')
+                chat_message.file.save(f'message_file_{chat_message.id}.{ext}', file_content)
+                chat_message.file_name = file_name_data
 
             receiver_language = receiver.user_language
             translated_content = content
@@ -65,25 +82,33 @@ def create_socketio_server():
                     translated_content = translate_message(content, receiver_language)
                 except LangDetectException:
                     print("Cannot detect language of the content:", content)
+            translations_map[receiver.id] = translated_content
+            sio.emit('new_message',{
+                    "id": chat_message.id,
+                    "sender_id": sender_id,
+                    "sender": sender.username,
+                    "room_chat_id": room_chat_id,
+                    "content": content,
+                    'image_url': (domain + settings.MEDIA_URL + str(chat_message.image)) if chat_message.image else None,
+                    "file_url": chat_message.file.url if chat_message.file else None,
+                    "file_name": file_name_data if file_name_data else None,
+                    'sender_image': sender_profile.image.url,
+                    "timestamp": chat_message.timestamp.isoformat(),
+                    "message_translated": translated_content,
+                    'message_translations': translations_map,
+                    "reply_to": {
+                        "id": reply_to_message.id,
+                        "content": reply_to_message.content,
+                        "sender": reply_to_message.sender.username,
+                    } if reply_to_message else None,
+                },
+                room=room_chat_id 
+            )
             MessageTranslation.objects.create(
                 chat_message=chat_message,
                 user=receiver,
                 language=receiver_language,
                 translated_content=translated_content
-            )
-            translations_map[receiver.id] = translated_content
-            sio.emit('new_message',{
-                    "sender_id": sender_id,
-                    "sender_username": sender.username,
-                    "room_chat_id": room_chat_id,
-                    "content": content,
-                    'image_url': (domain + settings.MEDIA_URL + str(chat_message.image)) if chat_message.image else None,
-                    'sender_image': domain + settings.MEDIA_URL + str(sender_profile.image),
-                    "timestamp": chat_message.timestamp.isoformat(),
-                    "message_translated": translated_content,
-                    'message_translations': translations_map,
-                },
-                room=room_chat_id 
             )
 
         elif room_chat.type_room == "group":
@@ -92,6 +117,7 @@ def create_socketio_server():
                 sender=sender,
                 room_chat_id=room_chat_id,
                 content=content,
+                reply_to=reply_to_message, 
                 timestamp=timezone.now(),
                 is_read=False,
                 is_deleted=False
@@ -101,6 +127,12 @@ def create_socketio_server():
                 ext = format.split('/')[-1]
                 image_content = ContentFile(base64.b64decode(imgstr), name=f'temp.{ext}')
                 chat_message.image.save(f'message_image_{chat_message.id}.{ext}', image_content)
+            if file_data:
+                file_name, file_str = file_data.split(';base64,')
+                ext = file_name.split('/')[-1]
+                file_content = ContentFile(base64.b64decode(file_str), name=f'message_file_{chat_message.id}.{ext}')
+                chat_message.file.save(f'message_file_{chat_message.id}.{ext}', file_content)
+                chat_message.file_name = file_name_data
             # Duyệt qua tất cả các thành viên trong nhóm
             
             for member in room_chat.users.exclude(id=sender_id):
@@ -111,7 +143,6 @@ def create_socketio_server():
                         translated_content = translate_message(content, member_language)
                     except LangDetectException:
                         print("Cannot detect language of the content:", content)
-            # Lưu bản dịch cho từng thành viên vào bảng MessageTranslation
                 MessageTranslation.objects.create(
                     chat_message=chat_message,
                     user=member,
@@ -120,15 +151,23 @@ def create_socketio_server():
                 )
                 translations_map[member.id] = translated_content
             sio.emit('new_message',{
+                    "id": chat_message.id,
                     "sender_id": sender_id,
-                    "sender_username": sender.username,
+                    "sender": sender.username,
                     "room_chat_id": room_chat_id,
                     "content": content,
-                    'image_url': (domain + settings.MEDIA_URL + str(chat_message.image)) if chat_message.image else None,
-                    'sender_image': domain + settings.MEDIA_URL + str(sender_profile.image),
+                    'image_url': domain + settings.MEDIA_URL + str(chat_message.image) if chat_message.image else None,
+                    'sender_image': sender_profile.image.url,
                     "timestamp": chat_message.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
                     'message_translations': translations_map,
                     'message_translated': content,
+                    "reply_to": {
+                        "id": reply_to_message.id,
+                        "content": reply_to_message.content,
+                        "sender": reply_to_message.sender.username,
+                    } if reply_to_message else None,
+                    "file_url": chat_message.file.url if chat_message.file else None,
+                    "file_name": file_name_data if file_name_data else None,
                 },
                 room=room_chat_id
             )
@@ -152,11 +191,12 @@ def create_socketio_server():
             user_translation = translations.filter(user=user).first()
             translated_content = user_translation.translated_content if user_translation else message.content
             sender_profile = message.sender_profile
+            is_hidden = user in message.hidden_by.all()
             message_list.append({
                 'id': message.id,
                 'sender': message.sender.username,
                 # 'receiver': message.receiver.username,
-                'sender_image': domain + settings.MEDIA_URL + str(sender_profile.image),
+                'sender_image': sender_profile.image.url,
                 # 'receiver_image': domain + settings.MEDIA_URL + str(receiver_profile.image),
                 'sender_id': message.sender.id,
                 # 'receiver_id': message.receiver.id,
@@ -166,6 +206,14 @@ def create_socketio_server():
                 'is_read': message.is_read,
                 'is_deleted': message.is_deleted,
                 'image_url': domain + settings.MEDIA_URL + str(message.image) if message.image else None,
+                "file_url": message.file.url if message.file else None,
+                "file_name": message.file_name if message.file_name else None,
+                'hidden': is_hidden,
+                "reply_to": {
+                    "id": message.reply_to.id,
+                    "content": message.reply_to.content,
+                    "sender": message.reply_to.sender.username,
+                } if message.reply_to else None,
             })
                 
         sio.emit('message_list', {
@@ -245,7 +293,6 @@ def create_socketio_server():
     def accept_friend(sid, data):
         user_id = data.get("user_id")
         receiver_id = data.get("receiver_id")
-        print(user_id, receiver_id)
         user_1 = User.objects.get(id=user_id)
         user_2 = User.objects.get(id=receiver_id)
         user_1.friend_requests_sent.remove(user_2)
@@ -284,6 +331,7 @@ def create_socketio_server():
     @sio.event
     def get_chat_list(sid, data):
         user_id = data.get("user_id")
+        room_chat_id = data.get("room_chat_id")
         user = User.objects.get(id=user_id)
         friends = Friendship.objects.filter(user=user).select_related('friend__profile')
     # Subquery để lấy id của tin nhắn mới nhất
@@ -302,7 +350,7 @@ def create_socketio_server():
     # Chuẩn bị dữ liệu trả về cho client
         user_data = []
         for friend in friends:
-            profile = friend.friend.profile  # Đã có profile qua select_related
+            profile = friend.friend.profile  
             latest_message = latest_message_dict.get(friend.latest_message_id)
             if latest_message:
                 latest_timestamp_str = format(latest_message.timestamp, 'Y-m-d H:i:s')
@@ -315,7 +363,18 @@ def create_socketio_server():
                 'latest_message_time': latest_timestamp_str,
                 'latest_message_content': latest_message.content,
                 'latest_message_translated': message_translated.translated_content if message_translated else latest_message.content,
-                'room_chat_id': latest_message.room_chat_id,
+                'room_chat_id': friend.room_chat_id,
+                })
+            else:
+                user_data.append({
+                'id': friend.friend.id,
+                'fullname': profile.fullname,
+                'image': profile.image.url,
+                'status_online': friend.friend.status_online,
+                'latest_message_time': None,
+                'latest_message_content': None,
+                'latest_message_translated': None,
+                'room_chat_id': friend.room_chat_id,
                 })
                 
         chat_list_room = []
@@ -323,13 +382,12 @@ def create_socketio_server():
         memberships = RoomMembership.objects.filter(user=user, room__type_room='group')
         for membership in memberships:
             room = membership.room
-            # Lấy tin nhắn gần nhất trong nhóm
             latest_message = ChatMessage.objects.filter(room_chat_id=room.id).order_by('-timestamp').first()
             if latest_message:
                 message_content = latest_message.content
                 timestamp = latest_message.timestamp.isoformat()
             else:
-                message_content = ""
+                message_content = "No messages yet"
                 timestamp = ""
             chat_list_room.append({
                 'group_id': room.id,
@@ -338,7 +396,7 @@ def create_socketio_server():
                 'latest_message': message_content,
                 'timestamp': timestamp,
             })
-        sio.emit('chat_list', {'chat_list': user_data, 'chat_list_room': chat_list_room}, to=sid)
+        sio.emit('chat_list', {'chat_list': user_data, 'chat_list_room': chat_list_room, 'userCurrent': user_id}, to=sid)
 
     @sio.event
     def get_sorted_rooms_by_latest_message(sid, data):
@@ -399,7 +457,7 @@ def create_socketio_server():
             'email': user.email,
             'userCurrent': data.get("userCurrent"),
             'user_language': user.user_language,
-        })
+        }, room=sid)
         
     @sio.event
     def get_search_user(sid, data):
@@ -491,6 +549,7 @@ def create_socketio_server():
     def create_group_chat(sid, data):
         user_id = data.get("user_id")
         user_ids = data.get("user_ids", [])
+        print(user_ids)
         group_name = data.get("group_name", "New Group Chat")
 
         if len(user_ids) < 1:
@@ -523,9 +582,204 @@ def create_socketio_server():
                 "group_name": room_chat.name,
                 "member_ids": user_ids,
             },
-            room=sid
+            to=sid
         )
     
+    @sio.event
+    def get_group_data(sid, data):
+        room_chat = RoomChat.objects.get(id=data.get("room_chat_id"))
+        user = User.objects.get(id=data.get("user_id"))
+        romMember = RoomMembership.objects.filter(user=user, room=room_chat).first()
+        sio.emit('get_group_data', {
+            'id': room_chat.id, 
+            'group_name': room_chat.name,
+            'group_image': room_chat.avatar.url,
+            'group_slogan': room_chat.slogan,
+            'role': romMember.role,
+        }, room=sid)
+    
+    @sio.event
+    def update_group_data(sid, data):
+        room_chat = RoomChat.objects.get(id=data.get("room_chat_id"))
+        room_chat.name = data.get("group_name")
+        room_chat.slogan = data.get("group_slogan")
+        image_data = data.get("image")
+        if image_data:
+            format, imgstr = image_data.split(';base64,')
+            ext = format.split('/')[-1]
+            image_content = ContentFile(base64.b64decode(imgstr), name=f'temp.{ext}')
+            room_chat.avatar = image_content
+        room_chat.save()
+    
+    @sio.event
+    def delete_group(sid, data):
+        room_chat = RoomChat.objects.get(id=data.get("room_chat_id"))
+        user = User.objects.get(id=data.get("user_id"))
+        romMember = RoomMembership.objects.filter(user=user, room=room_chat).first()
+        if romMember.role == 'superadmin':
+            room_chat.delete()
+        
+    @sio.event
+    def leave_group(sid, data):
+        room_chat = RoomChat.objects.get(id=data.get("room_chat_id"))
+        user = User.objects.get(id=data.get("user_id"))
+        romMember = RoomMembership.objects.filter(user=user, room=room_chat).first()
+        romMember.delete()
+        # Nếu không còn thành viên xóa nhóm
+        if room_chat.type_room == 'group' and room_chat.users.count() == 0:
+            room_chat.delete()
+        
+    @sio.event
+    def get_room_members(sid, data):
+        user_id = data.get("user_id")
+        room_chat_id = data.get("room_chat_id")
+
+        # Lấy danh sách thành viên trong phòng
+        room_members = RoomMembership.objects.filter(room_id=room_chat_id).select_related("user__profile")
+
+        # Tạo danh sách thông tin thành viên
+        members_info = []
+        for member in room_members:
+            profile = member.user.profile
+            members_info.append({
+                "user_id": member.user.id,
+                "username": member.user.username,
+                "email": member.user.email,
+                "role": member.role,
+                "fullname": profile.fullname,
+                "bio": profile.bio,
+                "image": profile.image.url if profile.image else None,  # URL của ảnh
+            })
+
+        # Gửi danh sách thành viên về client
+        sio.emit("get_room_members", {
+            "room_chat_id": room_chat_id,
+            "members": members_info,
+        }, room=sid)
+        
+    @sio.event
+    def get_users_not_in_group(sid, data):
+        user_id = data.get("user_id")
+        room_chat_id = data.get("room_chat_id")
+
+        requesting_user = User.objects.get(id=user_id)
+
+        # Lấy danh sách user trong group
+        members_in_group = RoomMembership.objects.filter(room_id=room_chat_id).values_list("user_id", flat=True)
+
+        # Lấy danh sách user không thuộc group
+        users_not_in_group = User.objects.exclude(id__in=members_in_group).exclude(id=requesting_user.id).select_related("profile")
+
+        # Tạo danh sách thông tin user không thuộc group
+        users_info = []
+        for user in users_not_in_group:
+            profile = user.profile
+            users_info.append({
+                "user_id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "fullname": profile.fullname if profile.fullname else "",
+                "bio": profile.bio if profile.bio else "",
+                "image": profile.image.url if profile.image else None,  # URL của ảnh
+            })
+
+        # Gửi danh sách user không thuộc group về client
+        sio.emit("get_users_not_in_group", {
+            "room_chat_id": room_chat_id,
+            "users": users_info,
+        }, room=sid)
+
+    @sio.event
+    def add_users_to_group(sid, data):
+        room_chat_id = data.get("room_chat_id")
+        user_ids_to_add = data.get("user_ids", [])
+        room_chat = RoomChat.objects.get(id=room_chat_id)
+        users_to_add = User.objects.filter(id__in=user_ids_to_add)
+
+        existing_members = RoomMembership.objects.filter(room=room_chat).values_list('user_id', flat=True)
+        new_users = [user for user in users_to_add if user.id not in existing_members]
+
+        if not new_users:
+            sio.emit("error", {"message": "All users are already in the group."}, room=sid)
+            return
+        
+        for user in new_users:
+            RoomMembership.objects.create(
+                user=user,
+                room=room_chat,
+                role="user" 
+            )
+            
+    @sio.event
+    def hide_message(sid, data):
+        user_id = data.get("user_id")
+        message_id = data.get("message_id")
+
+        try:
+            user = User.objects.get(id=user_id)
+            result = hide_message_for_user(user, message_id)
+            sio.emit("hide_message", {"message_id": message_id}, room=sid)
+        except Exception as e:
+            sio.emit("error", {"message": str(e)}, room=sid)
+
+    @sio.event
+    def reply_message(sid, data):
+        user_id = data.get("user_id")
+        room_chat_id = data.get("room_chat_id")
+        original_message_id = data.get("message_id")
+        reply_content = data.get("content")
+
+        try:
+            user = User.objects.get(id=user_id)
+            room = RoomChat.objects.get(id=room_chat_id)
+
+            # Lấy tin nhắn gốc (nếu tồn tại)
+            original_message = ChatMessage.objects.get(id=original_message_id)
+
+            # Tạo tin nhắn phản hồi
+            reply_message = ChatMessage.objects.create(
+            content=reply_content,
+            sender=user,
+            room=room,
+            message_replied=original_message
+            )
+
+            # Gửi sự kiện tới frontend
+            sio.emit(
+            "new_reply",
+            {
+                "id": reply_message.id,
+                "content": reply_message.content,
+                "sender": reply_message.sender.username,
+                "room": room_chat_id,
+                "timestamp": reply_message.timestamp.isoformat(),
+                "message_replied": {
+                    "id": original_message.id,
+                    "content": original_message.content,
+                    "sender": original_message.sender.username,
+                },
+            },
+            room=f"room_{room_chat_id}",
+            )
+        except ChatMessage.DoesNotExist:
+            sio.emit("error", {"message": "Original message not found"}, room=sid)
+        except Exception as e:
+            sio.emit("error", {"message": str(e)}, room=sid)
+
+    @sio.event
+    def delete_chat_friend(sid, data):
+        user_id = data.get("user_id")
+        room_chat_id = data.get("room_chat_id")
+        print("delete chat")
+        user = User.objects.get(id=user_id)
+        room_chat = RoomChat.objects.get(id=room_chat_id)
+
+        # Lấy tất cả tin nhắn trong phòng chat và thay đổi trạng thái thành 'hidden'
+        chat_messages = ChatMessage.objects.filter(room_chat_id=room_chat.id)
+
+        for message in chat_messages:
+            message.hidden_by.add(user)  # Thêm người dùng vào danh sách ẩn tin nhắn
+            message.save()
+                
     return sio
 
-        

@@ -111,9 +111,9 @@ const FriendRequest = () => {
                 <Link to="/friend-request/">
                     <i className="fas fa-user-plus" /> Friend Requests
                 </Link>
-                <Link to="/friend-list/">
+                <a href='#' style={{backgroundColor: "black"}}>
                     <i className="fas fa-users" /> Friends List
-                </Link>
+                </a>
                 <Link to="/user-list/">
                     <i className="fas fa-address-book" /> User List
                 </Link>

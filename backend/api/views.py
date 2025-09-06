@@ -47,31 +47,6 @@ def testEndPoint(request):
 # Chat API
 class Inbox(generics.ListAPIView):
     serializer_class = ChatMessageSerializer
-    # queryset = Profile.objects.all()
-    # permission_classes = [IsAuthenticated]  
-
-    # def get_queryset(self):
-    #     user_id = self.kwargs['user_id'] # Lấy user_id từ URL
-
-    #     # Lấy ID tin nhắn cuối cùng cho mỗi conversation
-    #     last_messages = ChatMessage.objects.filter(
-    #         # OuterRef('id') đang tham chiếu đến trường id của User từ truy vấn bên ngoài
-    #         # Q objects được dùng để tạo các điều kiện phức tạp trong filter
-    #         Q(sender=OuterRef('id'), receiver=user_id) | Q(receiver=OuterRef('id'), sender=user_id)
-    #     ).order_by('-timestamp').values('id')[:1]
-
-    #     # Lấy users có tương tác
-    #     users_with_chat = User.objects.filter(
-    #         Q(sender__receiver=user_id) |
-    #         Q(receiver__sender=user_id)
-    #     ).distinct().annotate(
-    #         last_message_id = Subquery(last_messages)
-    #     )
-
-    #     # Lấy tin nhắn cuối cùng
-    #     return ChatMessage.objects.filter(
-    #         id__in=users_with_chat.values('last_message_id')
-    #     ).order_by('-timestamp')
     def get_queryset(self):
         user_id = self.kwargs['user_id']
 

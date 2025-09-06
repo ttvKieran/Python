@@ -102,9 +102,9 @@ const UserList = () => {
                 <Link to="/friend-list/">
                     <i className="fas fa-users" /> Friends List
                 </Link>
-                <Link to="/user-list/">
+                <a href='#' style={{backgroundColor: "black"}}>
                     <i className="fas fa-address-book" /> User List
-                </Link>
+                </a>
                 <Link onClick={logoutUser}>
                     <i className="fas fa-sign-out-alt" /> Log Out
                 </Link>

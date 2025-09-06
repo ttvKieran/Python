@@ -44,6 +44,7 @@ class RoomChat(models.Model):
     avatar = models.ImageField(default='default_room.png', upload_to='room_avatars', null=True, blank=True)
     type_room = models.CharField(max_length=10,choices=ROOM_TYPES, default='private')
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='active')
+    slogan = models.CharField(max_length=300, null=True, blank=True)
     users = models.ManyToManyField(
         User,
         through='RoomMembership',
@@ -95,11 +96,28 @@ class ChatMessage(models.Model):
     receiver = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="receiver")
     room_chat_id = models.CharField(max_length=300, null=True, blank=True)
     image = models.ImageField(default="", upload_to="chat_images", null=True, blank=True)
+    file = models.FileField(upload_to='chat_files/', null=True, blank=True)
+    file_name = models.CharField(max_length=300, null=True, blank=True)
     content = models.TextField()
     message_translated = models.TextField(default="")
     timestamp = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
     is_deleted = models.BooleanField(default=False)
+    
+    reply_to = models.ForeignKey(
+        'self',
+        null=True,  # Cho phép giá trị null
+        blank=True,
+        default=None,  # Đặt mặc định là None
+        on_delete=models.SET_NULL,
+        related_name='replies'
+    )   
+
+    hidden_by = models.ManyToManyField(
+        User, 
+        blank=True, 
+        related_name='hidden_messages'
+    )  # Danh sách user đã gỡ tin nhắn (ẩn tin với user này)
 
     class Meta:
         ordering = ['-timestamp']
@@ -107,6 +125,10 @@ class ChatMessage(models.Model):
         verbose_name_plural = "Chat Messages"
     def __str__(self):
         return f"{self.sender} - {self.receiver}"
+    
+    def is_hidden_for_user(self, user):
+        """Kiểm tra xem tin nhắn có bị ẩn với user hay không"""
+        return user in self.hidden_by.all()
 
     @property 
     def sender_profile(self):
